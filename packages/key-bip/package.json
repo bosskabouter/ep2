@@ -1,6 +1,6 @@
 {
   "name": "@ep2/key-bip",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1",
   "types": "out/index.d.ts",
   "source": "src/index.ts",
   "main": "out/cjs/index.js",

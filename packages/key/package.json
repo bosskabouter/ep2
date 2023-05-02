@@ -1,6 +1,6 @@
 {
   "name": "@ep2/key",
-  "version": "1.0.1-alpha.0",
+  "version": "1.0.1",
   "private": false,
   "description": "Tools for secure communication between peers",
   "typings": "out/index.d.ts",
