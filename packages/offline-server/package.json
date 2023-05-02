@@ -1,6 +1,6 @@
 {
   "name": "@ep2/offline-server",
-  "version": "1.0.0",
+  "version": "1.0.1-alpha.0",
   "private": false,
   "description": "Relay encrypted WebPush for Peer-2-Peer",
   "main": "out/index.js",

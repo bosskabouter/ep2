@@ -1,15 +1,14 @@
 {
   "name": "@ep2/online-client",
-  "version": "1.0.0",
+  "version": "1.0.1-alpha.0",
   "main": "out/index.js",
   "source": "src/index.ts",
   "types": "out/index.d.ts",
   "type": "module",
- 
   "description": "PeerJS extension with encrypted hybrid handshake",
   "scripts": {
     "build": "tsc",
-    "dev":"tsc --watch",
+    "dev": "tsc --watch",
     "test": "jest"
   },
   "author": "Paul Kuit",

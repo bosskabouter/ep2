@@ -1,6 +1,5 @@
 node_modules/
 out/
-*-lock.json
 coverage/
 .parcel-cache/
 * copy.ts
@@ -10,3 +9,4 @@ examples/ExampleClient/dev-dist/registerSW.js
 **/tsconfig.tsbuildinfo
 examples/ExampleServer/vapidKeys.test.json
 packages/offline-server/test/vapidKeys.json
+lerna-debug.log
