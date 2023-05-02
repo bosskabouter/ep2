@@ -1,0 +1,45 @@
+{
+  "name": "@ep2/offline-server",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Relay encrypted WebPush for Peer-2-Peer",
+  "main": "out/index.js",
+  "types": "out/index.d.ts",
+  "source": "src/index.ts",
+  "scripts": {
+    "build": "parcel build",
+    "vapid": "../../node_modules/.bin/web-push generate-vapid-keys --json > vapidKeys.test.json",
+    "dev": "nodemon --watch src -e ts --exec 'npm run build'",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bosskabouter/ep2.git#master"
+  },
+  "keywords": [
+    "web-push",
+    "libsodium",
+    "encrypted",
+    "push",
+    "p2p",
+    "messaging",
+    "offline"
+  ],
+  "author": "Paul Kuit",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bosskabouter/ep2/issues"
+  },
+  "homepage": "https://github.com/bosskabouter/ep2/tree/master#readme",
+  "dependencies": {
+    "@ep2/key": "file:../key",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "web-push": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.13",
+    "@types/web-push": "^3.3.2",
+    "supertest": "^6.3.3"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "references": [
+    {
+      "path": "../offline-client"
+    }
+  ],
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDirs": [
+      "./src"
+    ],
+    "outDir": "out",
+    "lib": [
+      "esnext"
+    ],
+    "composite": true,
+    "resolveJsonModule": true,
+    "exactOptionalPropertyTypes": true,
+    "declaration": true,
+    "module": "ES2022",
+    "target": "es2021",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "checkJs": true
+  },
+  "include": [
+    "./src/**/*",
+    "./src/app.json"
+  ],
+  "exclude": [
+    "test",
+    "bin"
+  ],
+  "$schema": "https://json.schemastore.org/tsconfig"
+}

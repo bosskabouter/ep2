@@ -1,0 +1,12 @@
+node_modules/
+out/
+*-lock.json
+coverage/
+.parcel-cache/
+* copy.ts
+*/dev-dist/*
+examples/ExampleClient/out-sw/*
+examples/ExampleClient/dev-dist/registerSW.js
+**/tsconfig.tsbuildinfo
+examples/ExampleServer/vapidKeys.test.json
+packages/offline-server/test/vapidKeys.json

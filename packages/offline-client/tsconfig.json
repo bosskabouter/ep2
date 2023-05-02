@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    // "lib": [
+    //   "DOM",
+    //   "DOM.Iterable",
+    //   "ESNext",
+    //   "WebWorker"
+    // ],
+    "composite": true,
+    "target": "ES2016",
+    "module": "ES2020",
+
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "outDir": "./out"
+  },
+  "include": [
+    "./src/**/*"
+  ],
+  "$schema": "https://json.schemastore.org/tsconfig"
+}

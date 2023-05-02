@@ -1,0 +1,43 @@
+{
+  "references": [
+    {
+      "path": "../key"
+    }
+  ],
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": [
+      "esnext"
+    ],
+    "composite": true,
+    "resolveJsonModule": true,
+    "outDir": "out",
+    "declaration": true,
+    "module": "es2022",
+    "target": "es2021",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "checkJs": true
+  },
+  "include": [
+    "./src/**/*"
+  ],
+  "exclude": [
+    "test",
+    "bin"
+  ],
+  "$schema": "https://json.schemastore.org/tsconfig"
+}

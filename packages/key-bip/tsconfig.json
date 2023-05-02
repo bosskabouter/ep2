@@ -1,0 +1,41 @@
+{
+  "extends": "../../tsconfig.json",
+  
+  "compilerOptions": {
+    "rootDir": "./src",
+    "module": "commonjs",
+    "target": "es5",
+    "lib": [
+      "es6"
+    ],
+    "composite": true,
+    "outDir": "./out/cjs",
+    "resolveJsonModule": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationDir": "./out",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "checkJs": true
+  },
+  "include": [
+    "./src/**/*"
+  ],
+  "exclude": [
+    "test"
+  ],
+  "$schema": "https://json.schemastore.org/tsconfig"
+}

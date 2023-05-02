@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "module": "commonjs",
+    "target": "es5",
+    "lib": [
+      "es6"
+    ],
+    "composite": true,
+    "outDir": "out/cjs",
+    "declarationDir": "out"
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "test"
+  ],
+  "$schema": "https://json.schemastore.org/tsconfig"
+}
