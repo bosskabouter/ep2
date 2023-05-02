@@ -1,5 +1,6 @@
 {
   "name": "@ep2/example-server",
+  "private": true,
   "main": "out/index.js",
   "version": "1.0.0",
   "scripts": {

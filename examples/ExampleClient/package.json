@@ -1,6 +1,6 @@
 {
   "name": "@ep2/example-client",
-  "private": false,
+  "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
