@@ -19,7 +19,9 @@
     "build": "parcel build",
     "start": "node out/index.js",
     "dev": "nodemon --watch src -e ts --exec 'npm run build'",
-    "test": "jest"
+    "clean": "rm -rf ./out",
+    "test": "jest",
+    "coverage": "jest --coverage"
   },
   "author": "Paul Kuit",
   "license": "ISC",

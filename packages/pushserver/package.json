@@ -9,7 +9,9 @@
     "build": "parcel build",
     "vapid": "../../node_modules/.bin/web-push generate-vapid-keys --json > vapidKeys.test.json",
     "dev": "nodemon --watch src -e ts --exec 'npm run build'",
-    "test": "jest"
+    "clean": "rm -rf ./out",
+    "test": "jest",
+    "coverage": "jest --coverage"
   },
   "repository": {
     "type": "git",

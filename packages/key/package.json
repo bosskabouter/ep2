@@ -51,9 +51,10 @@
   },
   "scripts": {
     "build": "tsc & tsc --module es2015 --outDir out/esm",
+    "clean": "rm -rf ./out",
+    "test": "jest",
     "coverage": "jest --coverage",
-    "dev": "tsc --watch & tsc --watch  --module es2015 --outDir out/esm",
-    "test": "jest"
+    "dev": "tsc --watch & tsc --watch  --module es2015 --outDir out/esm"
   },
   "author": "mailto:paul.kuit@protonmail.com",
   "license": "MIT",

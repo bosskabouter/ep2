@@ -1,9 +1,10 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDirs": ["./src"],
     "outDir": "out",
-    "lib": ["esnext"],
+    "lib": [
+      "esnext"
+    ],
     "composite": true,
     "resolveJsonModule": true,
     "exactOptionalPropertyTypes": true,
@@ -17,7 +18,13 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true
   },
-  // "include": ["./src/**/*", "./src/app.json"],
-  "exclude": ["test", "bin"],
+  "include": [
+    "./src/**/*",
+    "./src/app.json"
+  ],
+  "exclude": [
+    "test",
+    "bin"
+  ],
   "$schema": "https://json.schemastore.org/tsconfig"
 }
