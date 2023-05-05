@@ -1,10 +1,12 @@
-# EP2Key
+# `EP2Key`
 
-`EP2Key` is a TypeScript package that provides a key pair for secure communication between `peers` using the [`sodium`](https://github.com/jedisct1/libsodium.js) cryptography library. It offers two types of encryption: asymmetric encryption, where the message is encrypted with the recipient's public key, and symmetric encryption, where the message is encrypted with a shared secret key.
+`EP2Key` is a TypeScript package that provides a key pair for secure communication between peers using the [`sodium`](https://github.com/jedisct1/libsodium.js) cryptography library.
+
+It offers two types of encryption: `asymmetric` encryption, where the message is encrypted with the recipient's public key, and `symmetric` encryption, where the message is encrypted with a shared secret key.
 
 ## Installation
 
-To install `EP2Key` with `npm`, run:
+To install `EP2Key` using `npm`, run:
 
 ```bash
 npm install @ep2/key
@@ -20,138 +22,147 @@ import { EP2Key } from "@ep2/key";
 
 ### Creating an EP2Key
 
-To create an `EP2Key` instance, you can use the `create` static async method:
+To create an `EP2Key` instance, use the `create` static async method:
 
 ```typescript
-const keyPair = await EP2Key.create();
+const ep2key = await EP2Key.create();
 ```
 
 The `create` method generates a key pair consisting of a public and a private key for asymmetric encryption and a public and a private key for symmetric encryption. It returns a promise that resolves to an instance of `EP2Key`.
 
-You can also specify a seed value from which to derive the key pair:
+You can also specify a seed value from which to derive the key pair. Please note that the size of the key must have 128 bytes:
 
 ```typescript
-const seed = new Uint8Array([1, 2, 3, 4]);
-const keyPair = await EP2Key.create(seed);
+const seed = new Uint8Array(128); 
+const ep2key = await EP2Key.create(seed);
 ```
 
 Alternatively, you can use a string password to derive the seed value:
 
 ```typescript
 const password = "my-password";
-const keyPair = await EP2Key.create(password);
+const ep2key = await EP2Key.create(password);
 ```
 
 Note that deriving the seed value from a string password using `crypto_generichash` can result in a weak keyset if the password does not contain enough entropy.
 
-### Peer ID
+## Peer ID
 
 The `peerId` property of the `EP2Key` is a unique identifier used to identify peers in the network.
 
 ```typescript
 const peerId = ep2Key.peerId;
+console.log(peerId)
+//7d40fd9b1ad0a98e5d2aa5042f972c5d25b3295086af57aba476be449bbc430b
 ```
 
-Peers share their public IDs as part of the P2P key exchange process. When initiating a new secure channel with a peer, the `peerId` of the destination peer is passed to the `initiateHandshake` method. This `peerId` is then used to retrieve the public key of the destination peer from the `EP2Key` object and to encrypt the shared secret key with the public key of the destination peer during the handshake process. The encrypted shared secret key is then sent to the destination peer along with the signed handshake message. When receiving a handshake from a peer, the `peerId` of the sender is also required to decrypt the encrypted shared secret key using the private key of the receiver. This ensures that only the intended recipient can access the shared secret key and establish a secure channel with the sender.
+Peers share their public IDs as part of the peer-to-peer key exchange process. When initiating a new secure channel with a peer, the `peerId` of the destination peer is passed to the `initiateHandshake` method. This `peerId` is then used to retrieve the public key of the destination peer from the `EP2Key` object and to encrypt the shared secret key with the public key of the destination peer during the handshake process. The encrypted shared secret key is then sent to the destination peer along with the signed handshake message. When receiving a handshake from a peer, the `peerId` of the sender is also required to decrypt the encrypted shared secret key using the private key of the receiver. This ensures that only the intended recipient can access the shared secret key and establish a secure channel with the sender.
 
-### Encrypting and Decrypting Messages
+## Encrypting and Decrypting Messages
 
-#### Asymmetric Encryption
+### `AsymmetricallyEncryptedMessage<T>`
 
-To encrypt a message using asymmetric encryption, you need to know the public key of the recipient. You can then create an instance of `AsymmetricallyEncryptedMessage` and call its `decrypt` method with the recipient's `EP2Key` instance to decrypt the message.
+To create a `AsymmetricallyEncryptedMessage`, both sender and receiver need to know the others public [Peer ID](#peer-id).
 
 ```typescript
 const message = "Hello, world!";
-const recipientPublicKey = "..."; // base64-encoded public key of the recipient
-const encryptedMessage = keyPair.encryptAsymmetrically(
+
+const key1 = await EP2Key.create()
+const key2 = await EP2Key.create()
+
+const encryptedMessage = key1.encrypt<string>(
   message,
-  recipientPublicKey
+  key2.peerId
 );
-const decryptedMessage = recipientKey.decryptAsymmetrically<string>(
-  keyPair.peerId,
+const decryptedMessage = key2.decrypt<string>(
+  key1.peerId,
   encryptedMessage
 );
 ```
 
-The `encryptAsymmetrically` method returns an instance of `AsymmetricallyEncryptedMessage`, which contains the encrypted message and a nonce. The nonce is used to ensure that each message encrypted with the same key is unique. The `decryptAsymmetrically` method takes the sender's peer ID and the encrypted message as arguments
+Using the public key of the intended recipient provides confidentiality but not protection against potential attacks on the communication channel or on the recipient's private key. The message is constructed with a nonce (a unique number used once) and the cipher, which is the result of encrypting the plaintext message using the recipient's public key.
 
-### Encrypting and Decrypting Messages
+### `SymmetricallyEncryptedMessage<T>`
 
-#### Asymmetric Encryption
-
-To encrypt a message using asymmetric encryption, you need to know the public key of the recipient. You can then create an instance of `AsymmetricallyEncryptedMessage` and call its `decrypt` method with the recipient's `EP2Key` instance to decrypt the message.
+To encrypt a message for an intended recipient without revealing your identity, use the static `EP2Key.encrypt` function to retrieve an instance of the `SymmetricallyEncryptedMessage` that contains the encrypted message, the nonce used in the encryption, and the encrypted key.
 
 ```typescript
 const message = "Hello, world!";
-const recipientPublicKey = "..."; // base64-encoded public key of the recipient
-const encryptedMessage = keyPair.encryptAsymmetrically(
+
+const key2 = await EP2Key.create()
+
+const encryptedMessage = EP2Key.encrypt<string>(
   message,
-  recipientPublicKey
+  key2.peerId
 );
-const decryptedMessage = recipientKey.decryptAsymmetrically<string>(
-  keyPair.peerId,
+const decryptedMessage = key2.decryptSymmetrically<string>(
   encryptedMessage
 );
 ```
 
-The `encryptAsymmetrically` method returns an instance of `AsymmetricallyEncryptedMessage`, which contains the encrypted message and a nonce. The nonce is used to ensure that each message encrypted with the same key is unique. The `decryptAsymmetrically` method takes the sender's peer ID and the encrypted message as arguments and returns the decrypted message.
+To decrypt a message, you need to have the private key corresponding to the public key used in the encryption. You can then use the decrypt function of the SymmetricallyEncryptedMessage class to decrypt the message. This enables anonymous relay of messages.
 
-#### Symmetric Encryption
+## `SecureChannel`
 
-To encrypt a message using symmetric encryption, you need to generate a shared secret key and use it to encrypt the message. You can then create an instance of `SymmetricallyEncryptedMessage` and call its `decrypt` method with the recipient's `EP2Key` instance to decrypt the message.
+Establishing a Secure Channel between two parties involves a handshake to agree on the encryption keys, after which both parties can encrypt and decrypt messages sent between them.
 
 ```typescript
-const message = "Hello, world!";
-const sharedSecret = "..."; // base64-encoded shared secret
-const encryptedMessage = keyPair.encryptSymmetrically(message, sharedSecret);
-const decryptedMessage =
-  recipientKey.decryptSymmetrically<string>(encryptedMessage);
+import { EP2Key, initiateHandshake, receiveHandshake } from '@ep2/key';
+
+// Party A initiates the handshake
+const partyAKey = await EP2Key.create();
+const {secret, handshake} = await initiateHandshake(partyAKey);
+
+// Party B receives the handshake from party A and sends back its own handshake
+const partyBKey = await EP2Key.create();
+const partyBHandshake = receiveHandshake(partyBKey, partyAHandshake);
+const partyBResponse = await initiateHandshake(partyBKey, partyBHandshake);
+
+// Party A receives party B's handshake response
+const partyAFinalHandshake = await receiveHandshake(partyAKey, partyBResponse);
+
+// The Secure Channel is now established and can be used to encrypt and decrypt messages between the two parties
+const secureChannel = partyAFinalHandshake.secureChannel;
+
 ```
 
-The `encryptSymmetrically` method returns an instance of `SymmetricallyEncryptedMessage`, which contains the encrypted message, a nonce, and the encrypted shared secret. The `decryptSymmetrically` method takes the encrypted message as an argument and returns the decrypted message.
+After the handshake is complete, a SecureChannel object is returned, which can be used to encrypt and decrypt messages between the two parties.
 
-### Initiating a Secure Channel
+Here is an example of how to encrypt and decrypt a message using a SecureChannel:
 
-To initiate a new secure channel with a peer, the `initiateHandshake` method is used by a participant to initiate a secure channel with another participant.
-import { EP2Key } from 'ep2-js'
-import { initiateHandshake, receiveHandshake, SecureChannel } from './secure-channel'
+```typescript
+// Party A encrypts a message and sends it to party B
+const message = 'Hello, Party B!';
+const encryptedMessage = secureChannel.encrypt(message);
+partyB.receive(encryptedMessage);
 
-// Peer A generates a new key set and initiates a handshake with Peer B
-const peerAKey = new EP2Key()
-const peerAHandshake = initiateHandshake('peerB', peerAKey)
+// Party B receives the encrypted message, decrypts it, and reads the plaintext
+const encryptedMessage = partyB.getNextMessage();
+const plaintext = secureChannel.decrypt(encryptedMessage);
+console.log(plaintext); // 'Hello, Party B!'
 
-// Peer A sends the handshake message to Peer B using some communication channel
-// ...
+```
 
-// Peer B receives the handshake message from Peer A
-const peerBKey = new EP2Key()
-const peerBSecureChannel = receiveHandshake('peerA', peerAHandshake, peerBKey)
+## API Reference
 
-// Now, both peers have established a shared secret and can start communicating securely using the SecureChannel class
-const message = { text: 'Hello, World!' }
-const encryptedMessage = peerASecureChannel.encrypt(message)
+The `EP2Key` class has the following methods:
 
-// Peer A sends the encrypted message to Peer B using some communication channel
-// ...
+- `create(seed?: Uint8Array | string): Promise<EP2Key>`: Generates a new key pair for asymmetric and symmetric encryption. Optionally takes a seed value from which to derive the key pair.
+- `encryptAsymmetrically<T>(message: T, recipientPublicKey: string): AsymmetricallyEncryptedMessage<T>`: Encrypts a message using asymmetric encryption with the recipient's public key. Returns an instance of `AsymmetricallyEncryptedMessage`, which contains the encrypted message and a nonce.
+- `decryptAsymmetrically<T>(senderId: string, encryptedMessage: AsymmetricallyEncryptedMessage<T>): T`: Decrypts a message using asymmetric encryption with the private key of the recipient. Takes the sender's peer ID and the encrypted message as arguments and returns the decrypted message.
+- `encryptSymmetrically<T>(message: T, sharedSecret: string): SymmetricallyEncryptedMessage<T>`: Encrypts a message using symmetric encryption with a shared secret key. Returns an instance of `SymmetricallyEncryptedMessage`, which contains the encrypted message and a nonce.
+- `decryptSymmetrically<T>(encryptedMessage: SymmetricallyEncryptedMessage<T>): T`: Decrypts a message using symmetric encryption with the shared secret key. Takes the encrypted message as an argument and returns the decrypted message.
 
-// Peer B receives the encrypted message from Peer A
-const decryptedMessage = peerBSecureChannel.decrypt(encryptedMessage)
-console.log(decryptedMessage) // { text: 'Hello, World!' }
+The `AsymmetricallyEncryptedMessage` class has the following properties:
 
-The `peerId` parameter specifies the destination peer ID that the participant wants to communicate with. The method generates a shared secret and uses it to establish a secure channel with the other participant. It returns an object containing the `secureChannel` and a `handshake` message to be sent to the other participant for them to establish the same shared secret.
+- `encryptedMessage: string`: The base64-encoded encrypted message.
+- `nonce: string`: The base64-encoded nonce used for encryption.
 
-The `receiveHandshake` method is used by a participant to establish the same shared secret as the sending peer. The method takes the `peerId` and the `handshake` message as parameters. It verifies the signature of the `handshake` message, decrypts the shared secret, and returns a `SecureChannel` object.
+The `SymmetricallyEncryptedMessage` class has the following properties:
 
-Once a shared secret has been established, the `SecureChannel` object can be used to encrypt and decrypt messages between the two participants. The `encrypt` method takes an object as input, encrypts it using the shared secret, and returns an `AsymmetricallyEncryptedMessage` object containing the encrypted message and a nonce. The `decrypt` method takes an `AsymmetricallyEncryptedMessage` object as input, decrypts it using the shared secret and the nonce, and returns the original object.
+- `encryptedMessage: string`: The base64-encoded encrypted message.
+- `nonce: string`: The base64-encoded nonce used for encryption.
 
-## Dependencies
+## Conclusion
 
-This code uses the [`sodium`](https://github.com/jedisct1/libsodium.js) library for cryptographic operations.
-
-## Contributing
-
-Contributions to this code are welcome. Please open an issue or a pull request for any bug fixes or feature requests.
-
-## License
-
-This code is licensed under the MIT License. See the `LICENSE` file for details.
+`EP2Key` provides a simple and secure way to establish a secure channel between peers using asymmetric and symmetric encryption. It's easy to use and integrates well with other TypeScript projects. If you need to secure your peer-to-peer communication, give `EP2Key` a try!

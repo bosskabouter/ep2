@@ -9,7 +9,6 @@
     "outDir": "out/cjs",
     "declarationDir": "out"
   },
-  "include": ["src/**/*", "test/kx-test.ts"],
-  "exclude": ["test"],
+  "include": ["src/**/*"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

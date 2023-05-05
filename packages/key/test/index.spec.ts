@@ -7,7 +7,7 @@ import {
   generateRandomKey
 } from '../src'
 
-import { EP2KeyKX } from './kx-test'
+import { EP2KeyKX } from '../src/kx-test'
 
 import { jest } from '@jest/globals'
 
@@ -166,7 +166,7 @@ describe('EP2Key create', () => {
     }
     const ciphered = EP2Key.encrypt(peer2.peerId, obj)
     expect(ciphered).toBeDefined()
-    const decrypted = ciphered.decrypt(peer2)
+    const decrypted = peer2.decryptSymmetrically(ciphered)
     expect(decrypted).toEqual(obj)
   })
 
@@ -174,7 +174,7 @@ describe('EP2Key create', () => {
     const aMessage = 'Hello world!'
     const relayMessage = EP2Key.encrypt(peer1.peerId, aMessage)
     expect(relayMessage).toBeDefined()
-    const received = relayMessage.decrypt(peer1)
+    const received = peer1.decryptSymmetrically(relayMessage)
     expect(received).toEqual(aMessage)
   })
   test('should encrypt for and from relay long message', async () => {

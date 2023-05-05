@@ -42,10 +42,6 @@ export class SymmetricallyEncryptedMessage<
   ) {
     super(nonceB64, cipherB64)
   }
-
-  override decrypt (EP2Key: EP2Key): T {
-    return EP2Key.decryptSymmetrically<T>(this)
-  }
 }
 
 /**
@@ -224,7 +220,7 @@ export class EP2Key {
   }
 
   /**
-In a normal SecureMessage, the public key of the sender is needed because it is used to encrypt the message for the intended recipient. This allows only the recipient, who possesses the private key corresponding to the public key used in the encryption, to decrypt and read the message.
+   * In a normal SecureMessage, the public key of the sender is needed because it is used to encrypt the message for the intended recipient. This allows only the recipient, who possesses the private key corresponding to the public key used in the encryption, to decrypt and read the message.
    * @param publicKey - The recipient's public key.
    * @param message - The message to be encrypted.
    * @returns The encrypted message and nonce.

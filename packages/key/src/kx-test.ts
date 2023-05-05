@@ -1,12 +1,12 @@
-import sodium from "libsodium-wrappers";
+import sodium from 'libsodium-wrappers'
 import {
   type KeySet,
   SymmetricallyEncryptedMessage,
   AsymmetricallyEncryptedMessage,
   SecureChannel,
   EP2Key,
-  EncryptedHandshake,
-} from "../src";
+  type EncryptedHandshake
+} from '.'
 
 /**
  * Key pair used for secure communication between two peers.
@@ -17,38 +17,38 @@ export class EP2KeyKX extends EP2Key {
    * @param seed value to derive the key from. Can be a) a Uint8Array with seed for crypto_sign_seed_keypair, b) any string password to  derive the seed value from using crypto_generichash. Caution: this can results in a weak keyset if string doesn't contain enough entropy.
    * @returns Instance of the SecureChannelKey class
    */
-  public static override async create(
+  public static override async create (
     seed?: Uint8Array | string
   ): Promise<EP2KeyKX> {
-    await sodium.ready;
+    await sodium.ready
     // if seed is just a simple string password, convert it to full 32 byte seed value
-    let signKeyPair, boxKeyPair, kxKeyPair;
+    let signKeyPair, boxKeyPair, kxKeyPair
 
-    if (typeof seed === "string") {
-      seed = sodium.crypto_generichash(32, seed);
+    if (typeof seed === 'string') {
+      seed = sodium.crypto_generichash(32, seed)
     }
     if (seed != null) {
-      signKeyPair = sodium.crypto_sign_seed_keypair(seed);
-      boxKeyPair = sodium.crypto_box_seed_keypair(seed);
-      kxKeyPair = sodium.crypto_kx_seed_keypair(seed);
+      signKeyPair = sodium.crypto_sign_seed_keypair(seed)
+      boxKeyPair = sodium.crypto_box_seed_keypair(seed)
+      kxKeyPair = sodium.crypto_kx_seed_keypair(seed)
     } else {
-      signKeyPair = sodium.crypto_sign_keypair();
-      boxKeyPair = sodium.crypto_box_keypair();
-      kxKeyPair = sodium.crypto_kx_keypair();
+      signKeyPair = sodium.crypto_sign_keypair()
+      boxKeyPair = sodium.crypto_box_keypair()
+      kxKeyPair = sodium.crypto_kx_keypair()
     }
 
-    return new this({ signKeyPair, boxKeyPair, kxKeyPair });
+    return new this({ signKeyPair, boxKeyPair, kxKeyPair })
   }
 
   /**
    * @see create to initialize key
    */
-  protected constructor(override readonly keySet: KXKeySet) {
-    super(keySet);
+  protected constructor (override readonly keySet: KXKeySet) {
+    super(keySet)
   }
 
-  override get peerId(): string {
-    return sodium.to_hex(this.keySet.kxKeyPair.publicKey);
+  override get peerId (): string {
+    return sodium.to_hex(this.keySet.kxKeyPair.publicKey)
   }
 
   /**
@@ -61,7 +61,7 @@ export class EP2KeyKX extends EP2Key {
     publicKey: string,
     obj: T
   ): AsymmetricallyEncryptedMessage<T> {
-    const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
+    const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES)
     const cipherB64 = sodium.to_base64(
       sodium.crypto_box_easy(
         JSON.stringify(obj),
@@ -69,11 +69,11 @@ export class EP2KeyKX extends EP2Key {
         sodium.from_hex(publicKey),
         this.keySet.boxKeyPair.privateKey
       )
-    );
+    )
     return new AsymmetricallyEncryptedMessage(
       sodium.to_base64(nonce),
       cipherB64
-    );
+    )
   }
 
   /**
@@ -95,7 +95,7 @@ export class EP2KeyKX extends EP2Key {
           this.keySet.boxKeyPair.privateKey
         )
       )
-    );
+    )
   }
 
   /**
@@ -111,23 +111,23 @@ export class EP2KeyKX extends EP2Key {
     // Generate a random symmetric key for AES encryption
     const sharedSecret = sodium.randombytes_buf(
       sodium.crypto_secretbox_KEYBYTES
-    );
+    )
 
     // Encrypt the message with AES
-    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
     const cipherB64 = sodium.to_base64(
       sodium.crypto_secretbox_easy(JSON.stringify(obj), nonce, sharedSecret)
-    );
+    )
 
     // Encrypt the symmetric key with RSA public key of the relay server
     const encryptedKeyB64 = sodium.to_base64(
       sodium.crypto_box_seal(sharedSecret, sodium.from_hex(publicKey))
-    );
+    )
     return new SymmetricallyEncryptedMessage(
       sodium.to_base64(nonce),
       cipherB64,
       encryptedKeyB64
-    );
+    )
   }
 
   /**
@@ -141,8 +141,9 @@ export class EP2KeyKX extends EP2Key {
     publicKey: string,
     obj: T
   ): SymmetricallyEncryptedMessage<T> {
-    return EP2KeyKX.encrypt(publicKey, obj);
+    return EP2KeyKX.encrypt(publicKey, obj)
   }
+
   /**
    *
    * @param relayedMessage
@@ -155,7 +156,7 @@ export class EP2KeyKX extends EP2Key {
       sodium.from_base64(relayedMessage.encryptedKeyB64),
       this.keySet.boxKeyPair.publicKey,
       this.keySet.boxKeyPair.privateKey
-    );
+    )
 
     // Decrypt the message with the recovered symmetric key
     return JSON.parse(
@@ -166,7 +167,7 @@ export class EP2KeyKX extends EP2Key {
           decryptedKey
         )
       )
-    );
+    )
   }
 
   /**
@@ -174,19 +175,19 @@ export class EP2KeyKX extends EP2Key {
    * @param peerId Destination Peer ID to initiate a new secure channel with. This public box key is used in the hybrid encryption/verification handshake to establish a shared secret.
    * @returns a shared secret (to be kept secret :), together with the handshake to send to the other peer in order for him to establish the same shared secret on his side.
    */
-  initiateHandshake2(peerId: string): {
-    secureChannel: SecureChannel;
-    handshake: EncryptedHandshake;
+  initiateHandshake2 (peerId: string): {
+    secureChannel: SecureChannel
+    handshake: EncryptedHandshake
   } {
     const kx = sodium.crypto_kx_client_session_keys(
       this.keySet.kxKeyPair.publicKey,
       this.keySet.kxKeyPair.privateKey,
       sodium.from_hex(peerId)
-    );
+    )
     return {
       secureChannel: new KXSecureChannel(kx.sharedTx, kx.sharedRx),
-      handshake: { message: "", publicSignKey: "", signature: "" },
-    };
+      handshake: { message: '', publicSignKey: '', signature: '' }
+    }
   }
 
   /**
@@ -196,22 +197,22 @@ export class EP2KeyKX extends EP2Key {
    * @returns the shared secret key
    * @throws Error if anything prevented from establishing shared secret from handshake
    */
-  receiveHandshake2(peerId: string): SecureChannel {
+  receiveHandshake2 (peerId: string): SecureChannel {
     const kx = sodium.crypto_kx_server_session_keys(
       this.keySet.kxKeyPair.publicKey,
       this.keySet.kxKeyPair.privateKey,
       sodium.from_hex(peerId)
-    );
-    return new KXSecureChannel(kx.sharedRx, kx.sharedTx);
+    )
+    return new KXSecureChannel(kx.sharedRx, kx.sharedTx)
   }
 }
 /**
  * The key contains an encryption and a signing key, based on the same seed
  */
 interface KXKeySet extends KeySet {
-  signKeyPair: sodium.KeyPair;
-  boxKeyPair: sodium.KeyPair;
-  kxKeyPair: sodium.KeyPair;
+  signKeyPair: sodium.KeyPair
+  boxKeyPair: sodium.KeyPair
+  kxKeyPair: sodium.KeyPair
 }
 
 /**
@@ -222,22 +223,14 @@ export class KXSecureChannel extends SecureChannel {
    *
    * @param sharedSecret
    */
-  constructor(x1: Uint8Array, x2: Uint8Array) {
-    const combinedKey = new Uint8Array(x1.length + x2.length);
-    combinedKey.set(x1);
-    combinedKey.set(x2, x1.length);
+  constructor (x1: Uint8Array, x2: Uint8Array) {
+    const combinedKey = new Uint8Array(x1.length + x2.length)
+    combinedKey.set(x1)
+    combinedKey.set(x2, x1.length)
     const key = sodium.crypto_generichash(
       sodium.crypto_secretbox_KEYBYTES,
       combinedKey
-    );
-    super(key);
+    )
+    super(key)
   }
-  getSharedSecret() {
-    return this.sharedSecret;
-  }
-
-  // super(sodium.crypto_generichash(
-  //   sodium.crypto_kx_SESSIONKEYBYTES,
-  //   hashConcat)
-  // )
 }
