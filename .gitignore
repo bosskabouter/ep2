@@ -4,9 +4,9 @@ coverage/
 .parcel-cache/
 * copy.ts
 */dev-dist/*
-examples/ExampleClient/out-sw/*
-examples/ExampleClient/dev-dist/registerSW.js
+**/out-sw/*
+
 **/tsconfig.tsbuildinfo
-examples/ExampleServer/vapidKeys.test.json
-packages/offline-server/test/vapidKeys.json
+**/*.test.json
 lerna-debug.log
+example/client/dev-dist/registerSW.js

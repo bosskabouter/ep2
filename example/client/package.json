@@ -1,0 +1,30 @@
+{
+  "name": "@ep2/example-client",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:sw & sleep 5 && vite --open",
+    "dev:sw": "cd ./src/sw && tsc --watch",
+    "build": "npm run build:sw & tsc && vite build",
+    "build:sw": "cd ./src/sw && tsc",
+    "preview": "vite preview --open"
+  },
+  "dependencies": {
+    "@ep2/push": "file:../../packages/push",
+    "@ep2/peer": "file:../../packages/peer",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "workbox-window": "^6.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@vitejs/plugin-basic-ssl": "^1.0.1",
+    "@vitejs/plugin-react": "^3.1.0",
+    "typescript": "^4.9.3",
+    "vite": "^4.2.0",
+    "vite-plugin-pwa": "^0.14.7",
+    "workbox-core": "^6.5.4",
+    "workbox-precaching": "^6.5.4"
+  }
+}

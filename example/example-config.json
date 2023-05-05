@@ -1,0 +1,14 @@
+{
+  "testConfig": {
+    "server": {
+      "port": 9001,
+      "seed": "donkey eager potato discover stuff govern ill token gentle gas peasant orient",
+      "publicKey": "7d40fd9b1ad0a98e5d2aa5042f972c5d25b3295086af57aba476be449bbc430b",
+      "EP2_PUSH_CTX": "/ep2-push",
+      "EP2_PEER_CTX": "/ep2-peer"
+    },
+    "vapid": {
+      "subject": "mailto:test@testers.com"
+    }
+  }
+}

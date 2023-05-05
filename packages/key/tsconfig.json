@@ -4,18 +4,12 @@
     "rootDir": "src",
     "module": "commonjs",
     "target": "es5",
-    "lib": [
-      "es6"
-    ],
+    "lib": ["es6"],
     "composite": true,
     "outDir": "out/cjs",
     "declarationDir": "out"
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "test"
-  ],
+  "include": ["src/**/*", "test/kx-test.ts"],
+  "exclude": ["test"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

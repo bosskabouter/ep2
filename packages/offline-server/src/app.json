@@ -1,5 +1,0 @@
-{
-	"name": "ep2_offline_server",
-	"description": "A server side element to broker encrypted push messages between clients",
-	"website": "https://github.com/bosskabouter/ep2"
-}

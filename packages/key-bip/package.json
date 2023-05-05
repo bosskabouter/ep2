@@ -1,25 +1,36 @@
 {
   "name": "@ep2/key-bip",
-  "version": "1.0.1",
-  "types": "out/index.d.ts",
-  "source": "src/index.ts",
-  "main": "out/cjs/index.js",
-  "module": "out/esm/index.js",
-  "type": "module",
-  "exports": {
-    ".": {
-      "require": "./out/cjs/index.js",
-      "import": "./out/esm/index.js"
-    }
-  },
-  "description": "BIP key for ep2",
+  "description": "BIP HD & mnemonic key extension for @ep2/key",
   "keywords": [
     "bip32",
     "bip39",
     "secp256k1",
     "@ep2/key"
   ],
-  "homepage": "https://github.com/bosskabouter/ep2/tree/master/packages/securepeer-bip",
+  "homepage": "https://github.com/bosskabouter/ep2/",
+  "version": "1.0.0",
+  "typings": "out/index.d.ts",
+  "source": "src/index.ts",
+  "main": "out/cjs/index.js",
+  "module": "out/esm/index.js",
+  
+  "type": "commonjs",
+  
+  "files": [
+    "out/**/*"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./out/index.d.ts",
+        "default": "./out/esm/index.js"
+      },
+      "require": {
+        "types": "./out/index.d.ts",
+        "default": "./out/cjs/index.js"
+      }
+    }
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bosskabouter/ep2.git"
@@ -30,14 +41,12 @@
     "test": "jest"
   },
   "dependencies": {
-    "@ep2/key": "file:../key",
+    "@ep2/key": "^1.0.0",
     "bip32": "^4.0.0",
     "bip39": "^3.1.0",
     "tiny-secp256k1": "^2.2.1"
   },
   "license": "MIT",
-  "devDependencies": {
-    "@types/jest": "^29.5.0"
-  },
-  "$schema": "https://json.schemastore.org/package"
+  "$schema": "https://json.schemastore.org/package",
+  "gitHead": "e938a6f25d3a6971ee42039eb9fb7c91f92d53de"
 }

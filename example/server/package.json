@@ -1,0 +1,26 @@
+{
+  "name": "@ep2/example-server",
+  "private": true,
+  "main": "out/index.js",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "postinstall": "npm run vapid",
+    "start": "node out/server/src/index.js",
+    "vapid": "../../node_modules/.bin/web-push generate-vapid-keys --json > ./vapidKeys.test.json",
+    "dev": "nodemon --watch src -e ts --exec 'npm run build && npm run start'"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@ep2/key": "file:../../packages/key",
+    "@ep2/key-bip": "file:../../packages/key-bip",
+    "@ep2/peerserver": "file:../../packages/peerserver",
+    "@ep2/pushserver": "file:../../packages/pushserver"
+  },
+  "description": "",
+  "$schema": "https://json.schemastore.org/package",
+  "devDependencies": {
+    "nodemon": "^2.0.22",
+    "parcel": "^2.8.3"
+  }
+}

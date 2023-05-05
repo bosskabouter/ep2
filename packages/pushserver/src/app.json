@@ -1,0 +1,5 @@
+{
+  "name": "EP2 - Push Server",
+  "description": "A server side element to broker encrypted push messages between clients",
+  "website": "https://github.com/bosskabouter/ep2"
+}

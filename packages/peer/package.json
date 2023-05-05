@@ -1,0 +1,30 @@
+{
+  "name": "@ep2/peer",
+  "version": "1.0.0",
+  "main": "out/index.js",
+  "source": "src/index.ts",
+  "types": "out/index.d.ts",
+  "type": "module",
+  "description": "PeerJS extension with encrypted hybrid handshake",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest"
+  },
+  "author": "Paul Kuit",
+  "license": "ISC",
+  "dependencies": {
+    "@ep2/key": "^1.0.0",
+    "eventemitter3": "^5.0.0",
+    "peerjs": "^1.4.7"
+  },
+  "devDependencies": {
+    "crypto-browserify": "^3.12.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "stream-browserify": "^3.0.0",
+    "webpack": "^5.77.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "$schema": "https://json.schemastore.org/package",
+  "gitHead": "e938a6f25d3a6971ee42039eb9fb7c91f92d53de"
+}

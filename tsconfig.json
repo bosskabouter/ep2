@@ -1,9 +1,7 @@
 {
-  "compileOnSave": true,
+  // "compileOnSave": true,
   "compilerOptions": {
     "baseUrl": ".",
-    // "rootDir": "/src",
-    // "outDir": "./out",
     "paths": {
       "@ep2/key/*": [
         "packages/key/*"
@@ -11,37 +9,30 @@
       "@ep2/key-bip/*": [
         "packages/key-bip/*"
       ],
-      "@ep2/online-client/*": [
-        "packages/online-client/*"
+      "@ep2/peer/*": [
+        "packages/peer/*"
       ],
-      "@ep2/online-server/*": [
-        "packages/online-server/*"
+      "@ep2/push/*": [
+        "packages/push/*"
       ],
-      "@ep2/offline-client/*": [
-        "packages/offline-client/*"
+      "@ep2/peerserver/*": [
+        "packages/peerserver/*"
       ],
-      "@ep2/offline-server/*": [
-        "packages/offline-server/*"
+      "@ep2/pushserver/*": [
+        "packages/pushserver/*"
       ]
     },
     "lib": [
-      // "DOM",
-      // "DOM.Iterable",
-      // "ESNext"
+      "DOM",
+      "DOM.Iterable",
+      "ESNext",
       "WebWorker"
     ],
     "composite": true,
-    // "target": "es2017",
-    // "module": "commonjs",
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    // "forceConsistentCasingInFileNames": true,
     "strict": true,
-    // "skipLibCheck": true,
-    // "declaration": true,
-    // "allowJs": true,
-    // "noImplicitOverride": false
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
@@ -66,16 +57,16 @@
       "path": "packages/key-bip"
     },
     {
-      "path": "packages/online-client"
+      "path": "packages/peer"
     },
     {
-      "path": "packages/online-server"
+      "path": "packages/peerserver"
     },
     {
-      "path": "packages/offline-client"
+      "path": "packages/push"
     },
     {
-      "path": "packages/offline-server"
+      "path": "packages/pushserver"
     }
   ],
   "include": [
@@ -85,7 +76,8 @@
     "**/dist/**",
     "**/out/**",
     "**/dev-dist/**",
-    "**/coverage/**"
+    "**/coverage/**,",
+    "**/node_modules/NOT EXCLUDED/**"
   ],
   "$schema": "https://json.schemastore.org/tsconfig"
 }
