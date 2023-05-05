@@ -5,7 +5,7 @@ import type {
   DataConnection,
   MediaConnection
 } from 'peerjs'
-import { SecureLayer } from './secureLayer'
+import { SecureLayer } from './securelayer'
 import { type SecureChannel, type EP2Key } from '.'
 
 /**

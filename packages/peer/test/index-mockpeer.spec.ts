@@ -45,27 +45,6 @@ describe('EP2', () => {
     connectMock.mockRestore()
   })
 
-  beforeEach(
-    (done) => {
-      done()
-      // if (peer1.disconnected) {
-      //   // If the peer is already connected, pass the test
-      //   expect(peer1.disconnected).toBe(false)
-      //   console.info('Client connected 1', peer1.id)
-
-      //   done()
-      // } else {
-      // If the peer is not connected, wait for it to connect or timeout after 5 seconds
-
-      // peer1.on('error', (e) => {
-      //   expect(e).toBeNull()
-      //   console.info('Client errored', e)
-      //   done()
-      // })
-    }
-    // }
-  )
-
   afterAll(() => {
     peer1.disconnect()
     peer1.destroy()
@@ -93,30 +72,6 @@ describe('EP2', () => {
     expect(await peer1.isEp2PeerServer).toBeFalsy()
   })
 })
-
-// describe('API', () => {
-//   test('should work', async () => {
-//     const onlineClients:EP2Peer[] = [
-//       await getOnlineClient(),
-//       await getOnlineClient()]
-//       if (onlineClients.length>1 && onlineClients[1])
-// {    const secureLayer = onlineClients[0]?.connectSecurely(onlineClients[1].id)
-//     secureLayer?.send('Send this encrypted and signed')
-// }  })
-
-//  async function getOnlineClient():Promise<EP2Peer>{
-//     const oc = new EP2Peer(await EP2Key.create())
-
-//     oc.on('open', () => {
-//       oc.on('connection', (con) => {
-//         const secureLayer = con.metadata.secureLayer
-//         secureLayer.on('decrypted', console.info)
-//         secureLayer.send('Thanks for your secure message!')
-//       })
-//     })
-//     return oc
-//   }
-// })
 
 describe('SecureLayer', () => {
   it('emits the decrypted event when data is received', () => {
