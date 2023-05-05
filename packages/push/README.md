@@ -1,4 +1,3 @@
-
 # [`EP2Push`](./packages/push/)
 
 ## Installation
@@ -9,7 +8,7 @@ npm i @ep2/push
 
 ## Introduction
 
-This package provides utilities for sending and receiving encrypted push messages between browsers without revealing any unnecessary information to any party. It is part of the 
+This package provides utilities for sending and receiving encrypted push messages between browsers without revealing any unnecessary information to any party. It is part of the
 
 ## Usage
 

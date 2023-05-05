@@ -1,0 +1,5 @@
+**/out/*
+**/out-sw/*
+**/coverage/*
+**/dist/*
+**/dev-dist/*

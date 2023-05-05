@@ -13,9 +13,7 @@
   "source": "src/index.ts",
   "main": "out/cjs/index.js",
   "module": "out/esm/index.js",
-  
   "type": "commonjs",
-  
   "files": [
     "out/**/*"
   ],
@@ -41,7 +39,6 @@
     "clean": "rm -rf ./out",
     "test": "jest",
     "coverage": "jest --coverage"
-
   },
   "dependencies": {
     "@ep2/key": "^1.0.0",

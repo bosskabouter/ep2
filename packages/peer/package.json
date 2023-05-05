@@ -12,7 +12,6 @@
     "clean": "rm -rf ./out",
     "test": "jest",
     "coverage": "jest --coverage"
-
   },
   "author": "Paul Kuit",
   "license": "ISC",

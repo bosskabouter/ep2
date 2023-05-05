@@ -1,5 +1,10 @@
 import axios from "axios";
-import { EP2Push, EP2PushMessage, EP2PushConfig, updateEP2ServiceWorker } from "../src/ep2push";
+import {
+  EP2Push,
+  EP2PushMessage,
+  EP2PushConfig,
+  updateEP2ServiceWorker,
+} from "../src/ep2push";
 import { EP2Key, SymmetricallyEncryptedMessage } from "@ep2/key";
 import { registerSW, initSecurePush } from "../src/swutil";
 
@@ -64,7 +69,7 @@ describe("EP2Push", () => {
     };
   });
 
-  test("should Push", async () => { });
+  test("should Push", async () => {});
   afterEach(() => {
     jest.resetAllMocks();
   });

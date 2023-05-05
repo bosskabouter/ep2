@@ -1,9 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": [
-      "esnext"
-    ],
+    "lib": ["esnext"],
     "composite": true,
     "resolveJsonModule": true,
     "outDir": "out",
@@ -27,12 +25,7 @@
     "noUnusedParameters": true,
     "checkJs": true
   },
-  "include": [
-    "./src/**/*"
-  ],
-  "exclude": [
-    "test",
-    "bin"
-  ],
+  "include": ["./src/**/*"],
+  "exclude": ["test", "bin"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

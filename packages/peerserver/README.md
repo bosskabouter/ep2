@@ -11,7 +11,7 @@ npm i @ep2/peerserver
 ```
 
 ```typescript
-import {EP2Peer} from '@ep2/peerserver'
+import { EP2Peer } from "@ep2/peerserver";
 EP2PeerServer(await EP2Key.create("some seed value"), {});
 ```
 

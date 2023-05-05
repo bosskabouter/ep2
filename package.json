@@ -16,16 +16,12 @@
     "publish": "lerna run tsc && lerna publish",
     "lint": "eslint .",
     "fix": "eslint . --fix",
-
     "buildKeyFirst": "cd ./packages/key && npm run build",
     "build": "npm run buildKeyFirst && npm run build:all",
     "build:all": "lerna run build --stream --parallel",
     "build:example": "lerna run build --stream --parallel",
-
-
     "start": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
     "start:example": "lerna run build --stream --parallel",
-
     "dev:client": "cd ./example/client/ && npm run dev",
     "dev:server": "cd ./example/server/ && npm run dev"
   },
@@ -64,7 +60,7 @@
     "lerna": "^6.6.1",
     "nodemon": "^2.0.22",
     "parcel": "^2.8.3",
-    "prettier": "^2.8.8",
+    "prettier": "2.8.8",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",

@@ -3,9 +3,7 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es5",
-    "lib": [
-      "es6"
-    ],
+    "lib": ["es6"],
     "composite": true,
     "outDir": "./out/cjs",
     "resolveJsonModule": true,
@@ -29,11 +27,7 @@
     "noUnusedParameters": true,
     "checkJs": true
   },
-  "include": [
-    "./src/**/*"
-  ],
-  "exclude": [
-    "test"
-  ],
+  "include": ["./src/**/*"],
+  "exclude": ["test"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

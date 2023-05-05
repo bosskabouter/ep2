@@ -2,12 +2,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "useDefineForClassFields": true,
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext",
-      "WebWorker"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
     "allowJs": false,
     "composite": false,
     "skipLibCheck": true,
@@ -22,10 +17,7 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": [
-    "src",
-    "../example-config.json"
-  ],
+  "include": ["src", "../example-config.json"],
   "references": [
     {
       "path": "./tsconfig.node.json"

@@ -2,10 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./out",
-    "lib": [
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["DOM", "DOM.Iterable"],
     "target": "ES2016",
     "module": "ES2020",
     "moduleResolution": "node",
@@ -17,8 +14,6 @@
     "declaration": true,
     "declarationDir": "out"
   },
-  "include": [
-    "./src/**/*"
-  ],
+  "include": ["./src/**/*"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

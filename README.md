@@ -1,14 +1,10 @@
 # ep² - encrypted P2P [online & offline]
 
->
-
-**_ep2_** is a Typescript library that provides secure **`peer-to-peer`** communication between browsers, both **_`online`_** and **_`offline`_**.
-
-It uses the [libsodium](https://github.com/jedisct1/libsodium.js) library for hybrid encryption and signature verification between online peers using [peerjs](https://github.com/peers), and the [web-push](https://github.com/web-push-libs/web-push) library for encrypted push messaging between offline peers.
+**_ep2_** is a Typescript library that enables **secure peer-to-peer communication** between **browsers**, both **online and offline**. It uses the [libsodium](https://github.com/jedisct1/libsodium.js) library for hybrid encryption and signature verification between online peers using [peerjs](https://github.com/peers) and the [web-push](https://github.com/web-push-libs/web-push) library for encrypted push messaging between offline peers.
 
 ## Getting started
 
-To try out ep2, you can clone the project and start an example server and client using the following commands:
+To try out ep2, clone the project and start an example server and client using the following commands:
 
 ```bash
 git clone https://github.com/bosskabouter/ep2.git
@@ -19,36 +15,53 @@ npm start
 
 ## Packages
 
-The ep2 library consists of several packages, including
+The ep2 library consists of the following packages:
 
-- Client libraries
-  - [EP2Peer](./packages/peer/) - Online RTC client
-  - [EP2Push](./packages/push/) - Notification / subscription client
-- Server libraries
-  - [EP2PeerServer](/packages/peerserver/) - PeerJS Signaling server
-  - [EP2PushServer](/packages/pushserver/) - WebPush Relay server
-- [EP2Key](/packages/key/) core encryption component [*](#*)
-- [EP2KeyBIP](/packages/key-bip/) BIP32 and BIP39 key package.
+- Client:
+  - [EP2Peer](./packages/peer/) - encrypted P2P `WebRTC` client
+  - [EP2Push](./packages/push/) - encrypted `PushSubscription`/`Notification` client
+- Server:
+  - [EP2PeerServer](/packages/peerserver/) - authentication `WebRTC Signaling` server
+  - [EP2PushServer](/packages/pushserver/) - anonymized `Push Endpoint Relay` server
+- [EP2Key](/packages/key/) - the core encryption component (included in client and server packages)
+- [EP2KeyBIP](/packages/key-bip/) - BIP32 HD Key and BIP39 mnemonic recovery phrase.
 
-#### * Included in client and server libraries
+For detailed information about each package, see their respective pages.
 
-## Installation
+## Usage: In short
 
-```bash
-# client libraries
-npm i @ep2/peer
-npm i @ep2/push
+### An example Push and Peer client
 
-# server libraries
-npm i @ep2/peerserver
-npm i @ep2/pushserver
+```typescript
+import { EP2Peer, EP2Key } from "@ep2/peer";
+import { EP2Push /* also includes EP2Key */ } from "@ep2/push";
 
-# shared libraries (already included)
-npm i @ep2/key
-# optional bip32 & bip39 key
-npm i @ep2/key-bip
+EP2Key.create().then((key) => {
+  const ep2Push = EP2Push.register(key);
+  const ep2Peer = new EP2Peer(key);
+});
 ```
 
-## Client libraries
+### An example Push and Peer server
 
-See each package page inside for detailed information about that package.
+````typescript
+
+import {EP2PeerServer, EP2Key} from '@ep2/peerserver'
+import {EP2PushServer, /* also includes EP2Key */ } from '@ep2/pushserver'
+
+```typescript
+EP2KeyBIP.create().then( key => {
+  const ep
+  const ep2Peer = new EP2PeerServer(key)
+
+})
+
+````
+
+## Contributions
+
+Contributions to this project are welcome! If you would like to contribute, please open an issue or pull request on the [GitHub repository](https://github.com/bosskabouter/ep2).
+
+## License
+
+ep2 is open-source software licensed under the [MIT license](./LICENSE).

@@ -33,7 +33,7 @@ The `create` method generates a key pair consisting of a public and a private ke
 You can also specify a seed value from which to derive the key pair. Please note that the size of the key must have 128 bytes:
 
 ```typescript
-const seed = new Uint8Array(128); 
+const seed = new Uint8Array(128);
 const ep2key = await EP2Key.create(seed);
 ```
 
@@ -52,7 +52,7 @@ The `peerId` property of the `EP2Key` is a unique identifier used to identify pe
 
 ```typescript
 const peerId = ep2Key.peerId;
-console.log(peerId)
+console.log(peerId);
 //7d40fd9b1ad0a98e5d2aa5042f972c5d25b3295086af57aba476be449bbc430b
 ```
 
@@ -67,17 +67,11 @@ To create a `AsymmetricallyEncryptedMessage`, both sender and receiver need to k
 ```typescript
 const message = "Hello, world!";
 
-const key1 = await EP2Key.create()
-const key2 = await EP2Key.create()
+const key1 = await EP2Key.create();
+const key2 = await EP2Key.create();
 
-const encryptedMessage = key1.encrypt<string>(
-  message,
-  key2.peerId
-);
-const decryptedMessage = key2.decrypt<string>(
-  key1.peerId,
-  encryptedMessage
-);
+const encryptedMessage = key1.encrypt<string>(message, key2.peerId);
+const decryptedMessage = key2.decrypt<string>(key1.peerId, encryptedMessage);
 ```
 
 Using the public key of the intended recipient provides confidentiality but not protection against potential attacks on the communication channel or on the recipient's private key. The message is constructed with a nonce (a unique number used once) and the cipher, which is the result of encrypting the plaintext message using the recipient's public key.
@@ -89,15 +83,10 @@ To encrypt a message for an intended recipient without revealing your identity, 
 ```typescript
 const message = "Hello, world!";
 
-const key2 = await EP2Key.create()
+const key2 = await EP2Key.create();
 
-const encryptedMessage = EP2Key.encrypt<string>(
-  message,
-  key2.peerId
-);
-const decryptedMessage = key2.decryptSymmetrically<string>(
-  encryptedMessage
-);
+const encryptedMessage = EP2Key.encrypt<string>(message, key2.peerId);
+const decryptedMessage = key2.decryptSymmetrically<string>(encryptedMessage);
 ```
 
 To decrypt a message, you need to have the private key corresponding to the public key used in the encryption. You can then use the decrypt function of the SymmetricallyEncryptedMessage class to decrypt the message. This enables anonymous relay of messages.
@@ -107,11 +96,11 @@ To decrypt a message, you need to have the private key corresponding to the publ
 Establishing a Secure Channel between two parties involves a handshake to agree on the encryption keys, after which both parties can encrypt and decrypt messages sent between them.
 
 ```typescript
-import { EP2Key, initiateHandshake, receiveHandshake } from '@ep2/key';
+import { EP2Key, initiateHandshake, receiveHandshake } from "@ep2/key";
 
 // Party A initiates the handshake
 const partyAKey = await EP2Key.create();
-const {secret, handshake} = await initiateHandshake(partyAKey);
+const { secret, handshake } = await initiateHandshake(partyAKey);
 
 // Party B receives the handshake from party A and sends back its own handshake
 const partyBKey = await EP2Key.create();
@@ -123,7 +112,6 @@ const partyAFinalHandshake = await receiveHandshake(partyAKey, partyBResponse);
 
 // The Secure Channel is now established and can be used to encrypt and decrypt messages between the two parties
 const secureChannel = partyAFinalHandshake.secureChannel;
-
 ```
 
 After the handshake is complete, a SecureChannel object is returned, which can be used to encrypt and decrypt messages between the two parties.
@@ -132,7 +120,7 @@ Here is an example of how to encrypt and decrypt a message using a SecureChannel
 
 ```typescript
 // Party A encrypts a message and sends it to party B
-const message = 'Hello, Party B!';
+const message = "Hello, Party B!";
 const encryptedMessage = secureChannel.encrypt(message);
 partyB.receive(encryptedMessage);
 
@@ -140,7 +128,6 @@ partyB.receive(encryptedMessage);
 const encryptedMessage = partyB.getNextMessage();
 const plaintext = secureChannel.decrypt(encryptedMessage);
 console.log(plaintext); // 'Hello, Party B!'
-
 ```
 
 ## API Reference

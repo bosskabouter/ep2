@@ -3,31 +3,14 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@ep2/key/*": [
-        "packages/key/*"
-      ],
-      "@ep2/key-bip/*": [
-        "packages/key-bip/*"
-      ],
-      "@ep2/peer/*": [
-        "packages/peer/*"
-      ],
-      "@ep2/push/*": [
-        "packages/push/*"
-      ],
-      "@ep2/peerserver/*": [
-        "packages/peerserver/*"
-      ],
-      "@ep2/pushserver/*": [
-        "packages/pushserver/*"
-      ]
+      "@ep2/key/*": ["packages/key/*"],
+      "@ep2/key-bip/*": ["packages/key-bip/*"],
+      "@ep2/peer/*": ["packages/peer/*"],
+      "@ep2/push/*": ["packages/push/*"],
+      "@ep2/peerserver/*": ["packages/peerserver/*"],
+      "@ep2/pushserver/*": ["packages/pushserver/*"]
     },
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext",
-      "WebWorker"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
     "composite": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
@@ -70,17 +53,12 @@
     }
   ],
   "include": [
-    // "**/*.json",
-    // "**/src/*.*"
+    "packages/pushserver/src/**/*.ts",
+    "packages/pushserver/src/api/v1/public",
     "packages/*/src/**/*",
-    "packages/*/test/**/*"
+    "packages/*/test/**/*",
+    "packages/*/tsconfig.json"
   ],
-  "exclude": [
-    "**/dist/**",
-    "**/out/**",
-    "**/dev-dist/**",
-    "**/coverage/**,",
-    "**/node_modules/NOT EXCLUDED/**"
-  ],
+  "exclude": ["**/dist/**", "**/out/**", "**/dev-dist/**", "**/coverage/**,"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

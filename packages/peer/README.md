@@ -23,7 +23,6 @@ secureLayer.send("Hi Peer");
 secureLayer.on("decrypted", (msg) => {
   console.log(msg);
 });
-
 ```
 
 ## EP2Peer
@@ -43,7 +42,7 @@ Creates a new `EP2Peer` instance with the provided `EP2Key` object. The `EP2Key`
 #### `connectSecurely(peerId: string): SecureLayer`
 
 ```typescript
-const secureLayer: SecureLayer = peer1.connectSecurely(key2.peerId)
+const secureLayer: SecureLayer = peer1.connectSecurely(key2.peerId);
 ```
 
 Attempts to establish a secure connection with another endpoint using the `peerId` provided. Returns a `SecureLayer` object if the connection is successful.
@@ -51,7 +50,7 @@ Attempts to establish a secure connection with another endpoint using the `peerI
 #### `disconnect()`
 
 ```typescript
-peer1.disconnect()
+peer1.disconnect();
 ```
 
 Closes all active connections and disconnects the endpoint from the signaling server.
@@ -59,7 +58,7 @@ Closes all active connections and disconnects the endpoint from the signaling se
 #### `destroy()`
 
 ```typescript
-peer1.destroy()
+peer1.destroy();
 ```
 
 Closes all active connections and completely destroys the `EP2Peer` instance.
@@ -67,7 +66,7 @@ Closes all active connections and completely destroys the `EP2Peer` instance.
 #### `isEp2PeerServer(): Promise<boolean>`
 
 ```typescript
-const isEp2: boolean = await peer1.isEp2PeerServer()
+const isEp2: boolean = await peer1.isEp2PeerServer();
 ```
 
 Returns a promise that resolves to `true` if the connected signaling server is an `ep2online` server and `false` otherwise.
@@ -89,7 +88,9 @@ Creates a new `SecureLayer` instance with the provided `SecureChannel` object an
 #### `decrypted`
 
 ```typescript
-secureLayer.on('decrypted', (data: any) => { /* handle decrypted data */ })
+secureLayer.on("decrypted", (data: any) => {
+  /* handle decrypted data */
+});
 ```
 
 Emitted when encrypted data is received and successfully decrypted by the `SecureLayer`. The `data` argument contains the decrypted data.
@@ -99,7 +100,7 @@ Emitted when encrypted data is received and successfully decrypted by the `Secur
 #### `send(data: any)`
 
 ```typescript
-secureLayer.send('Data to encrypt')
+secureLayer.send("Data to encrypt");
 ```
 
 Encrypts the provided `data` and sends it over the secure channel.

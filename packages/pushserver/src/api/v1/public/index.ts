@@ -47,7 +47,6 @@ export default ({
       <FORM method='POST' action='./' ><INPUT TYPE='SUBMIT' value='Post Test Push'/></FORM>
       * should return TypeError: Cannot read properties of undefined (reading 'signature')
       `
-     
     );
   });
 
@@ -93,11 +92,9 @@ export default ({
         `Refusing push too big: ${payloadBytes.length} bytes. Max size: ${PUSH_MAX_BYTES} bytes.`
       );
     }
-    const res = await webpush.sendNotification(
-      subscription,
-      payloadBytes,
-      { TTL: 1000 * 60 }
-    );
+    const res = await webpush.sendNotification(subscription, payloadBytes, {
+      TTL: 1000 * 60,
+    });
     return res.statusCode;
   }
 

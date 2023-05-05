@@ -18,12 +18,8 @@ describe("BIP Key", () => {
     testValidKey(k1);
     expect(k1).toEqual(k2);
     expect(k1.peerId).toEqual(k2.peerId);
-    expect(k1.masterKey).toEqual(
-      k2.masterKey
-    );
-    expect(k1.keySet.signKeyPair).toEqual(
-      k2.keySet.signKeyPair
-    );
+    expect(k1.masterKey).toEqual(k2.masterKey);
+    expect(k1.keySet.signKeyPair).toEqual(k2.keySet.signKeyPair);
   });
 
   test("Entered wrong mnemonic", async () => {
