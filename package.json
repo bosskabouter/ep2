@@ -15,10 +15,17 @@
     "format": "prettier --write .",
     "publish": "lerna run tsc && lerna publish",
     "lint": "eslint .",
+    "fix": "eslint . --fix",
+
     "buildKeyFirst": "cd ./packages/key && npm run build",
     "build": "npm run buildKeyFirst && npm run build:all",
     "build:all": "lerna run build --stream --parallel",
+    "build:example": "lerna run build --stream --parallel",
+
+
     "start": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "start:example": "lerna run build --stream --parallel",
+
     "dev:client": "cd ./example/client/ && npm run dev",
     "dev:server": "cd ./example/server/ && npm run dev"
   },
@@ -28,11 +35,9 @@
     "online",
     "offline",
     "authentication",
- 
     "peerjs",
     "web-push",
     "libsodium",
- 
     "bip32",
     "bip39",
     "mnemonic"

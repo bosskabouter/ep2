@@ -70,7 +70,11 @@
     }
   ],
   "include": [
-    "**/*.json"
+    // "**/*.json",
+    // "**/src/*.*"
+
+    "packages/*/src/**/*"
+    
   ],
   "exclude": [
     "**/dist/**",
