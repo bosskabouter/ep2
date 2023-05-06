@@ -1,4 +1,8 @@
 # [`EP2Push`](./packages/push/)
+`EP2Push` is part of the [`ep2`](../../) library, which provides **offline** and **online** **encrypted** **peer to peer** communication in between **browsers**.
+## Introduction
+
+This package provides utilities for sending and receiving encrypted push messages between browsers without revealing any unnecessary information to any party. It is part of the
 
 ## Installation
 
@@ -6,9 +10,6 @@
 npm i @ep2/push
 ```
 
-## Introduction
-
-This package provides utilities for sending and receiving encrypted push messages between browsers without revealing any unnecessary information to any party. It is part of the
 
 ## Usage
 

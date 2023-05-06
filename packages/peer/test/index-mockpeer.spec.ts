@@ -11,7 +11,7 @@ describe("EP2", () => {
     (peer: string, options?: PeerConnectOption | undefined) => DataConnection
   >;
 
-  let key1: EP2Key, key2: EP2Key;
+  let key1: EP2Key, key2: EP2Key, serverKey: EP2Key;
   let peer1: EP2Peer, peer2: EP2Peer;
 
   beforeAll(async () => {
@@ -24,19 +24,23 @@ describe("EP2", () => {
           open: true,
           on: jest.fn(),
           peer: key2.peerId,
-          metadata: jest.fn(),
+          metadata: {},
         } as unknown as DataConnection;
       });
 
     // peer1 = new EP2Peer(key1)
+    serverKey = await EP2Key.create();
     peer1 = new EP2Peer((key1 = await EP2Key.create()));
     expect(key1.peerId).toBeDefined();
-    peer2 = new EP2Peer((key2 = await EP2Key.create()));
+    peer2 = new EP2Peer((key2 = await EP2Key.create()), serverKey.peerId, {
+      debug: 0,
+    });
     expect(peer1).toBeDefined();
     expect(peer2).toBeDefined();
 
     peer2.on("open", (id: string) => {
       console.info("peer connected", peer2, id);
+      peer1.connect(peer2.id, { label: "blah" });
     });
   });
 
@@ -57,14 +61,16 @@ describe("EP2", () => {
     expect(key2.peerId).toBeDefined();
     peer2.on("connection", (con: DataConnection) => {
       expect(con).toBeDefined();
+      expect(con.metadata.secureLayer).toBeDefined();
     });
-    const secureLayer12: SecureLayer = peer1.connectSecurely(key2.peerId);
+    const secureLayer12: SecureLayer = peer1.connect(key2.peerId);
 
     expect(secureLayer12).toBeDefined();
     expect(secureLayer12).toBeDefined();
     secureLayer12.send("Data to encrypt");
 
-    // Set up a promise to wait for the connection event
+    const dataConnection = peer2.connect(key1.peerId);
+    expect(dataConnection).toBeDefined();
   });
 
   test("New EP2Peer connects to any peerserver - identifying none ep2online server", async () => {

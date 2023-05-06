@@ -7,7 +7,6 @@ import {
 
 import express from "express";
 
-import VAPID_KEYS from "./vapid-keys.spec.json";
 import TEST_PUSH from "./push-subscription.spec.json";
 
 import publicContent from "../src/app.json";
@@ -54,7 +53,7 @@ describe("EP2Push", () => {
     );
 
     server = app.listen(TEST_PORT, () => {
-      const sps = EP2PushServer(serverKey, VAPID_KEYS, { port: TEST_PORT + 2 });
+      const sps = EP2PushServer(serverKey, { port: TEST_PORT + 2 });
       expect(sps).toBeDefined();
       app.use("/", sps);
     });
@@ -194,7 +193,6 @@ describe("undefined server", () => {
   test("should not create an app without server", async () => {
     const app = ExpressEP2PushServer(
       await EP2Key.create(),
-      VAPID_KEYS,
       null as any
     );
     expect(() => app.emit("mount", express())).toThrow(

@@ -1,6 +1,7 @@
 import type { CorsOptions } from "cors";
 
 export interface IConfig {
+  readonly vapidSubject: string;
   readonly host: string;
   readonly port: number;
   readonly expire_timeout: number;
@@ -21,6 +22,7 @@ export interface IConfig {
 }
 
 const defaultConfig: IConfig = {
+  vapidSubject: "mailto:test@test.org",
   host: "::",
   port: 9000,
   expire_timeout: 5000,

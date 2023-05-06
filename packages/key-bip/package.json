@@ -34,7 +34,7 @@
     "url": "git+https://github.com/bosskabouter/ep2.git"
   },
   "scripts": {
-    "build": "tsc & tsc --module es2015 --outDir out/esm",
+    "build": "tsc && tsc --module es2015 --outDir out/esm",
     "dev": "tsc --watch & tsc --watch  --module es2015 --outDir out/esm",
     "clean": "rm -rf ./out",
     "test": "jest",

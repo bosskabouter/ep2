@@ -52,13 +52,7 @@
       "path": "packages/pushserver"
     }
   ],
-  "include": [
-    "packages/pushserver/src/**/*.ts",
-    "packages/pushserver/src/api/v1/public",
-    "packages/*/src/**/*",
-    "packages/*/test/**/*",
-    "packages/*/tsconfig.json"
-  ],
+  "include": ["packages/*/src/**/*"],
   "exclude": ["**/dist/**", "**/out/**", "**/dev-dist/**", "**/coverage/**,"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

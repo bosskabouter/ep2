@@ -42,6 +42,9 @@ export class SymmetricallyEncryptedMessage<
   ) {
     super(nonceB64, cipherB64);
   }
+  override decrypt(EP2Key: EP2Key): T {
+    return EP2Key.decryptSymmetrically<T>(this);
+  }
 }
 
 /**

@@ -1,13 +1,12 @@
 {
   "name": "@ep2/pushserver",
   "version": "1.0.0",
-  "description": "Relay encrypted WebPush for Peer-2-Peer",
+  "description": "Relay encrypted WebPush for Peer-2-Peer using ep2",
   "main": "out/index.js",
   "types": "out/index.d.ts",
   "source": "src/index.ts",
   "scripts": {
     "build": "parcel build",
-    "vapid": "../../node_modules/.bin/web-push generate-vapid-keys --json > vapidKeys.test.json",
     "dev": "nodemon --watch src -e ts --exec 'npm run build'",
     "clean": "rm -rf ./out",
     "test": "jest",

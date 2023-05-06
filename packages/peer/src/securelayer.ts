@@ -1,10 +1,13 @@
 import { type DataConnection } from "peerjs";
 import { type AsymmetricallyEncryptedMessage, type SecureChannel } from ".";
 import EventEmitter from "eventemitter3";
-interface EP2PeerEvents {
+type EP2PeerEvents = {
   decrypted: string;
-  connected: (secureLayer: SecureLayer) => void;
-}
+  connected: SecureLayer;
+  close: void;
+  error: Error;
+  iceStateChanged: RTCIceConnectionState;
+};
 
 /**
  * Wraps the dataConnection with the secureChannel. The SecureLayer is automatically instantiated after a successful handshake and added to the connection.metadata.secureLayer to pass it on in the event chain for peer.on('connection').
@@ -15,7 +18,16 @@ export class SecureLayer extends EventEmitter<EP2PeerEvents> {
     readonly dataConnection: DataConnection
   ) {
     super();
+    this.dataConnection.on("close", () => {
+      this.emit("close");
+    });
 
+    this.dataConnection.on("error", (e) => {
+      this.emit("error", e);
+    });
+    this.dataConnection.on("iceStateChanged", (state) => {
+      this.emit("iceStateChanged", state);
+    });
     this.dataConnection.on("open", () => {
       this.dataConnection.on("data", (data) => {
         super.emit(

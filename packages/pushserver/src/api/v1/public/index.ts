@@ -18,14 +18,9 @@ interface WebPushRequest {
 
 // const HTTP_ERROR_PUSH_TOO_BIG = 507
 export default ({
-  vapid,
   key,
   config,
 }: {
-  vapid: {
-    keys: webpush.VapidKeys;
-    subject: string;
-  };
   key: EP2Key;
   config: IConfig;
 }): express.Router => {
@@ -33,16 +28,24 @@ export default ({
 
   const PUSH_MAX_BYTES = config.pushMaxBytes;
 
-  webpush.setVapidDetails(
-    vapid.subject,
-    vapid.keys.publicKey,
-    vapid.keys.privateKey
-  );
+  /**
+   *
+   * 0. validates request from valid ep2 push client
+   * 1. Generates a new Vapid Key pair.
+   * 2. Encrypt it the private key so only this server can decrypt: recipient === sender
+   * 3. send response vapid public key and encrypted private key back to client
+   */
+  app.get("/vapid", (request, response) => {
+    key.decryptSymmetrically(request.body);
+    const vapid = webpush.generateVAPIDKeys();
+    const encryptedPrivateKey = key.encrypt(key.peerId, vapid.privateKey);
+    response.send({ encryptedPrivateKey, publicKey: vapid.publicKey });
+  });
 
   app.get("/test", (_request, response) => {
     response.send(
       `
-      <h1>EP²Push 🛰️</h1>
+      <h1>EP²Push - Test</h1>
       
       <FORM method='POST' action='./' ><INPUT TYPE='SUBMIT' value='Post Test Push'/></FORM>
       * should return TypeError: Cannot read properties of undefined (reading 'signature')

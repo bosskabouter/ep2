@@ -1,5 +1,5 @@
-import Peer from "peerjs";
-import type {
+import Peer, { CallOption } from "peerjs";
+import {
   PeerJSOption,
   PeerConnectOption,
   DataConnection,
@@ -7,15 +7,46 @@ import type {
 } from "peerjs";
 import { SecureLayer } from "./securelayer";
 import { type SecureChannel, type EP2Key } from ".";
+import EventEmitter from "eventemitter3";
 
 /**
  * A SecurePeer has a guaranteed verified identity and establishes encrypted P2P communication over trusted connections.
  */
-export class EP2Peer extends Peer {
+
+type EP2PeerEvents = {
+  /**
+   * Emitted when a connection to the PeerServer is established.
+   */
+  open: (id: string, isEP2Server: boolean) => void;
+  /**
+   * Emitted when a new data connection is established from a remote peer.
+   */
+  connection: SecureChannel;
+  /**
+   * Emitted when a remote peer attempts to call you.
+   */
+  call: (mediaConnection: MediaConnection) => void;
+  /**
+   * Emitted when the peer is destroyed and can no longer accept or create any new connections.
+   */
+  close: void;
+  /**
+   * Emitted when the peer is disconnected from the signalling server
+   */
+  disconnected: (currentId: string) => void;
+  /**
+   * Errors on the peer are almost always fatal and will destroy the peer.
+   */
+  error: (error: Error) => void;
+};
+export class EP2Peer extends EventEmitter<EP2PeerEvents> {
+  peer: Peer;
+
   readonly isEp2PeerServer: Promise<boolean>;
   /**
    * Creates a SecurePeer with given key. It connects to a peerserver, just like a normal peer. If a serverPublicKey is given, it will use it to initiate a secure handshake. If no serverPublicKey is given, it will connect to any normal peerserver.
    * @param key gives id of the peer
+  disconnected: any;
    * @param options normal peerjs connection options. token will be used to pass the secure
    *  @see PeerJSOption
    * @param serverPublicKey the public key of the EP2OnlineServer connecting with. If the server is a normal PeerServer, this argument is optional.
@@ -25,8 +56,9 @@ export class EP2Peer extends Peer {
     public readonly serverPublicKey?: string,
     options?: PeerJSOption
   ) {
+    super();
     const expectEp2Server = serverPublicKey !== undefined;
-    super(
+    this.peer = new Peer(
       key.peerId,
       !expectEp2Server
         ? options
@@ -37,10 +69,16 @@ export class EP2Peer extends Peer {
             ),
           })
     );
-    super.on("open", this.handleOpenServer);
-    super.on("connection", this.handleDataConnection);
-    super.on("call", this.validateConnection);
-    super.on("error", console.error);
+    this.peer.on("open", this.handleOpenServer);
+    this.peer.on("connection", this.handleDataConnection);
+    this.peer.on("call", this.validateConnection);
+
+    //simply re-emit the other events
+    this.peer.on("error", (e) => this.emit("error", e));
+    this.peer.on("disconnected", (currentId) =>
+      this.emit("disconnected", currentId)
+    );
+    this.peer.on("close", () => this.emit("close"));
 
     this.isEp2PeerServer = expectEp2Server
       ? this.testEp2Server()
@@ -52,24 +90,10 @@ export class EP2Peer extends Peer {
    * @param options CAUTION: metadata is replaced with handshake
    * @returns
    */
-
-  override connect(
-    peerId: string,
-    options?: PeerConnectOption
-  ): DataConnection {
-    return this.connectSecurely(peerId, options).dataConnection;
-  }
-
-  /**
-   *
-   * @param peerId
-   * @param options
-   * @returns
-   * @see connect
-   */
-  connectSecurely(peerId: string, options?: PeerConnectOption): SecureLayer {
+  // @override
+  connect(peerId: string, options?: PeerConnectOption): SecureLayer {
     const initiatedHandShake = this.key.initiateHandshake(peerId);
-    const conn = super.connect(peerId, {
+    const conn = this.peer.connect(peerId, {
       ...options,
       metadata: initiatedHandShake.handshake,
     });
@@ -125,7 +149,7 @@ export class EP2Peer extends Peer {
    */
   private async testEp2Server(): Promise<boolean> {
     const insecurePeer = new Peer(`${Math.round(Math.random() * 1000000000)}`, {
-      ...this.options,
+      ...this.peer.options,
       debug: 0,
       logFunction(_logLevel, ..._rest) {},
     });
@@ -140,5 +164,53 @@ export class EP2Peer extends Peer {
         insecurePeer.destroy();
       }, 5000);
     });
+  }
+
+  call(
+    peer: string,
+    stream: MediaStream,
+    options?: CallOption | undefined
+  ): MediaConnection {
+    //todo include handshake
+    return this.peer.call(peer, stream, options);
+  }
+
+  /**
+   * Wrapper methods to behave like a peer
+   */
+
+  get open() {
+    return this.peer.open;
+  }
+  get disconnected() {
+    return this.peer.disconnected;
+  }
+  get destroyed() {
+    return this.peer.destroyed;
+  }
+  get id() {
+    return this.peer.id;
+  }
+  get options() {
+    return this.peer.options;
+  }
+  disconnect() {
+    this.peer.disconnect();
+  }
+  destroy() {
+    this.peer.destroy();
+  }
+  reconnect() {
+    this.peer.reconnect();
+  }
+  getConnection(
+    peerId: string,
+    connectionId: string
+  ): DataConnection | MediaConnection | null {
+    return this.peer.getConnection(peerId, connectionId);
+  }
+
+  listAllPeers(cb?: ((_: any[]) => void) | undefined): void {
+    this.peer.listAllPeers(cb);
   }
 }

@@ -23,5 +23,6 @@
     "URLSAFE",
     "webpush",
     "xchacha"
-  ]
+  ],
+  "testing.automaticallyOpenPeekView": "never"
 }

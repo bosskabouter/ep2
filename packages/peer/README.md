@@ -2,7 +2,9 @@
 
 ## Introduction
 
-`EP2Peer` is part of [ep² - encrypted online & offline p2p](../../) and creates and manages encrypted peer-to-peer connections between browsers. It is based on the [`peerjs`](https://github.com/peers/peerjs) library and uses [`libsodium`](https://github.com/jedisct1/libsodium.js) to handle encryption and decryption of data. The package provides two main classes: `EP2Peer` and `SecureLayer`.
+`EP2Peer` is part of [ep²](../../) - ***encrypted online & offline p2p*** and creates and manages encrypted peer-to-peer connections between browsers.
+
+`EP2Peer` wraps the [`Peer`](https://github.com/peers/peerjs) library and includes the core encryption package [`EP2Key`](../key/) that uses [`libsodium`](https://github.com/jedisct1/libsodium.js) to handle encryption and decryption of data.
 
 ## Installation
 
@@ -13,6 +15,8 @@ npm i @ep2/peer
 ## Usage
 
 ```typescript
+import {EP2Peer, EP2Key} from '@ep2/peer'
+
 const somePeerId = "cfc3e61a6faca1f4667d7...";
 const serverId = "aca1f4667d7cfc3e61a6f...";
 const myKey = await EP2Key.create();
@@ -27,12 +31,12 @@ secureLayer.on("decrypted", (msg) => {
 
 ## EP2Peer
 
-The `EP2Peer` class represents an endpoint that can connect to other endpoints and create secure channels for data transfer. It takes an [`EP2Key`](../key/) object as input which contains the necessary information to uniquely identify the endpoint.
+The `EP2Peer` class represents an endpoint that can connect to other endpoints and create secure channels for data transfer. It takes an [`EP2Key`](../key/) object as input which contains the necessary information to uniquely identify the endpoint's [`Peer ID`](../key/).
 
 ### Constructor
 
 ```typescript
-const peer1 = new EP2Peer(key: EP2Key)
+const peer1 = new EP2Peer(key: EP2Key, serverPublicEP2Key:string, options: )
 ```
 
 Creates a new `EP2Peer` instance with the provided `EP2Key` object. The `EP2Key` object contains a unique identifier for the endpoint and the necessary cryptographic keys to establish secure connections.
@@ -63,10 +67,12 @@ peer1.destroy();
 
 Closes all active connections and completely destroys the `EP2Peer` instance.
 
-#### `isEp2PeerServer(): Promise<boolean>`
+#### `isEp2PeerServer: Promise<boolean>`
+
+In order to make sure the `EP2Peer` is connected to an *authenticating* [EP2PeerServer](../peerserver/) and not 'just' a normal (or malicious) PeerServer, it attempts to connect with a corrupted handshake. If it succeeds, the Peer is not connected (or a)
 
 ```typescript
-const isEp2: boolean = await peer1.isEp2PeerServer();
+const isEp2: boolean = await peer1.isEp2PeerServer;
 ```
 
 Returns a promise that resolves to `true` if the connected signaling server is an `ep2online` server and `false` otherwise.

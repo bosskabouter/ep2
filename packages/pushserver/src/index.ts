@@ -1,5 +1,4 @@
 import express, { type Express } from "express";
-import type * as webpush from "web-push";
 import http from "node:http";
 import https from "node:https";
 
@@ -11,10 +10,6 @@ export * from "@ep2/key";
 
 function ExpressEP2PushServer(
   key: EP2Key,
-  vapid: {
-    keys: webpush.VapidKeys;
-    subject: string;
-  },
   server: https.Server | http.Server,
   options?: Partial<IConfig>
 ): Express {
@@ -39,7 +34,7 @@ function ExpressEP2PushServer(
       );
     }
 
-    createInstance({ vapid, key, app, options: newOptions });
+    createInstance({ key, app, options: newOptions });
   });
 
   return app as Express;
@@ -47,10 +42,6 @@ function ExpressEP2PushServer(
 
 function EP2PushServer(
   key: EP2Key,
-  vapid: {
-    keys: webpush.VapidKeys;
-    subject: string;
-  },
   options: Partial<IConfig> = {},
   callback?: (server: https.Server | http.Server) => void
 ): Express {
@@ -75,7 +66,7 @@ function EP2PushServer(
     server = http.createServer(app);
   }
 
-  const eP2PeerServer = ExpressEP2PushServer(key, vapid, server, newOptions);
+  const eP2PeerServer = ExpressEP2PushServer(key, server, newOptions);
   app.use(eP2PeerServer);
 
   server.listen(port, host, () => callback?.(server));
