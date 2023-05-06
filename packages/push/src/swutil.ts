@@ -10,39 +10,44 @@ declare global {
   }
 }
 
-export function registerSW(): void {
-  window.addEventListener("load", () => {
-    if ("serviceWorker" in navigator) {
-      // if (navigator.serviceWorker.controller != null) {
-      //   navigator.serviceWorker.addEventListener('controllerchange', () => {
-      //     // window.location.reload()
-      //   })
-      // }
+export async function handleSW(): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    window.addEventListener("load", () => {
+      if ("serviceWorker" in navigator) {
+        // if (navigator.serviceWorker.controller != null) {
+        //   navigator.serviceWorker.addEventListener('controllerchange', () => {
+        //     // window.location.reload()
+        //   })
+        // }
 
-      void navigator.serviceWorker.ready.then(async (registration) => {
-        if ("periodicSync" in registration) {
-          const status = await navigator.permissions.query({
-            // @ts-expect-error periodic-sync is not included in the default SW interface.
-            name: "periodic-background-sync",
-          });
+        void navigator.serviceWorker.ready.then(async (registration) => {
+          if ("periodicSync" in registration) {
+            const status = await navigator.permissions.query({
+              // @ts-expect-error periodic-sync is not included in the default SW interface.
+              name: "periodic-background-sync",
+            });
 
-          if (status.state === "granted") {
-            await registration.periodicSync.register("UPDATE_CHECK", {
-              minInterval: 24 * 60 * 60 * 1000,
+            if (status.state === "granted") {
+              registration.periodicSync
+                .register("UPDATE_CHECK", {
+                  minInterval: 24 * 60 * 60 * 1000,
+                })
+                .then(() => resolve(true))
+                .catch((err) => reject(err));
+            }
+          }
+
+          if (window.matchMedia("(display-mode: standalone)").matches) {
+            document.addEventListener("visibilitychange", () => {
+              if (document.visibilityState !== "hidden") {
+                navigator.serviceWorker.controller?.postMessage("UPDATE_CHECK");
+                registration.update().catch(console.error);
+              }
             });
           }
-        }
-
-        if (window.matchMedia("(display-mode: standalone)").matches) {
-          document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState !== "hidden") {
-              navigator.serviceWorker.controller?.postMessage("UPDATE_CHECK");
-              registration.update().catch(console.error);
-            }
-          });
-        }
-      });
-    }
+        });
+      }
+    });
   });
 }
 
@@ -52,23 +57,26 @@ export function registerSW(): void {
  * 2. Adds a handler for Updating the key from front-end with messages handler `event.data.type === 'UPDATE_KEY'`
  * @see updateEP2ServiceWorker
  */
-export function initSecurePush(
+export function EP2PushServiceWorker(
   sw: ServiceWorkerGlobalScope,
   customHandlePush?: (notification: NotificationOptions) => void
 ): void {
   let key: EP2Key | undefined;
-
   sw.addEventListener("message", handleMessage);
   sw.addEventListener("notificationclick", handleNotificationclick);
   sw.addEventListener("push", handlePush);
 
   sw.addEventListener("pushsubscriptionchange", handlePushSubscriptionChange);
 
+  /**
+   *  @param event
+   */
   function handleMessage(event: ExtendableMessageEvent): void {
     if (event.data.type === "SKIP_WAITING") {
       // This allows the web app to trigger skipWaiting
       sw.skipWaiting().catch(console.error);
     } else if (event.data.type === "UPDATE_KEY") {
+      // UPDATE_KEY event to receive (updated) EP2Key from front-end
       key = EP2Key.fromJson(event.data.key);
     }
   }

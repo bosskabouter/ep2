@@ -192,7 +192,7 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
     return this.peer.id;
   }
   get options() {
-    return this.peer.options;
+    return this.peer.options as PeerJSOption;
   }
   disconnect() {
     this.peer.disconnect();

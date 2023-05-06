@@ -7,7 +7,7 @@ import {
   type EncryptedHandshake,
   type SymmetricallyEncryptedMessage,
 } from "@ep2/key";
-import { registerSW } from "./swutil";
+import { handleSW } from "./swutil";
 
 /**
  * The body of a push request from EP2Push to EP2PushServer contains a JSON.toString(ep2PushRequest)
@@ -28,6 +28,7 @@ export interface EP2PushMessage {
 
 export interface EP2PushConfig {
   host: string;
+  port: number;
   path: string;
   publicKey: string;
   vapidKey: string;
@@ -44,11 +45,6 @@ export class EP2Push extends EventEmitter<EP2PushEvents> {
   /**
    * Encode the pushSubscription symmetrically with the server public key so it is safe to share with other contacts. Only the server can get your subscription data.
    */
-  readonly sharedSubscription: SymmetricallyEncryptedMessage<PushSubscription>;
-  /**
-   * URL to EP2PushServer
-   */
-  private readonly postURI;
 
   /**
    * @param pushSubscription
@@ -57,17 +53,12 @@ export class EP2Push extends EventEmitter<EP2PushEvents> {
    * @see EP2Push.register
    */
   constructor(
-    private readonly pushSubscription: PushSubscription,
     private readonly key: EP2Key,
-    private readonly config: EP2PushConfig
+    readonly config: EP2PushConfig,
+    private readonly postURI: string,
+    readonly sharedSubscription: SymmetricallyEncryptedMessage<PushSubscription>
   ) {
     super();
-    registerSW();
-    this.postURI = `${config.host}${config.path}/`;
-    this.sharedSubscription = EP2Key.encrypt(
-      this.config.publicKey,
-      this.pushSubscription
-    );
   }
 
   /**
@@ -84,9 +75,7 @@ export class EP2Push extends EventEmitter<EP2PushEvents> {
       await navigator.serviceWorker?.getRegistration();
 
     if (serviceWorkerRegistration === undefined) {
-      console.debug(
-        "navigator.serviceWorker?.getRegistration() returned UNDEFINED"
-      );
+      console.warn("EP2PUSH: No serviceWorker Registration");
       return undefined;
     }
 
@@ -94,12 +83,18 @@ export class EP2Push extends EventEmitter<EP2PushEvents> {
       applicationServerKey: serverConfig.vapidKey,
       userVisibleOnly: true,
     });
-    if (subs !== undefined) {
-      updateEP2ServiceWorker(secureKey);
-      return new this(subs, secureKey, serverConfig);
+    if (subs === undefined) {
+      console.warn("EP2PUSH: PushManager did not subscribe");
+      return undefined;
     }
 
-    return undefined;
+    updateEP2ServiceWorker(secureKey);
+
+    handleSW();
+    const postURI = `${serverConfig.host}${serverConfig.path}/`;
+    const sharedSubscription = EP2Key.encrypt(serverConfig.publicKey, subs);
+
+    return new this(secureKey, serverConfig, postURI, sharedSubscription);
   }
 
   /**
