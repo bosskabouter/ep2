@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "./out",
+    "outDir": "out",
 
     "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
     "composite": true,

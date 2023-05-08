@@ -42,12 +42,15 @@ EP2KeyBIP.create(TEST_VALUES.testConfig.server.seed)
         
         Example Server started 
     🐝   
-        http://localhost:${PORT.toString()}
+        http://localhost:${PORT.toString()}                             🐝
 
-        PUBLIC KEY: ${key.peerId}   🐝
+        PUBLIC KEY: ${key.peerId}   
         
         Remember your mnemonic for easy recovery of your key: 
-        *${key.mnemonic}*`
+        *${key.mnemonic}*
+        
+
+        `
       );
     });
 

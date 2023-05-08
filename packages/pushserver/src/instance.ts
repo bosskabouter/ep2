@@ -1,7 +1,7 @@
 import { type EP2Key } from "./";
 import express from "express";
 
-import { type IConfig } from "./config";
+import { type EP2PushServerConfig } from "./config";
 import { Api } from "./api";
 
 export const createInstance = ({
@@ -11,9 +11,9 @@ export const createInstance = ({
 }: {
   key: EP2Key;
   app: express.Application;
-  options: IConfig;
+  options: EP2PushServerConfig;
 }): void => {
-  const config: IConfig = { ...options };
+  const config: EP2PushServerConfig = { ...options };
   const api = Api({ key, config, corsOptions: options.corsOptions });
   app.use(express.json());
   app.use(options.path, api);

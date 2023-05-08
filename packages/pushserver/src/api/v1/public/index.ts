@@ -1,28 +1,22 @@
 import express from "express";
-import type { IConfig } from "../../../config";
+import type { EP2PushServerConfig } from "../../../config";
+
+import { AsymmetricallyEncryptedMessage, EP2Key } from "@ep2/key";
 import {
-  AsymmetricallyEncryptedMessage,
-  EncryptedHandshake,
-  SymmetricallyEncryptedMessage,
-  type EP2Key,
-} from "@ep2/key";
-import * as webpush from "web-push";
+  EP2PushMessageRequest,
+  EP2PushVapidRequest,
+  EP2PushVapidResponse,
+} from "@ep2/push";
 
-import { EP2PushMessage } from "../../../types";
-
-interface WebPushRequest {
-  encryptedPushMessages: AsymmetricallyEncryptedMessage<EP2PushMessage[]>;
-  handshake: EncryptedHandshake;
-  senderId: string;
-}
+import webpush from "web-push";
 
 // const HTTP_ERROR_PUSH_TOO_BIG = 507
 export default ({
-  key,
+  key: serverKey,
   config,
 }: {
   key: EP2Key;
-  config: IConfig;
+  config: EP2PushServerConfig;
 }): express.Router => {
   const app = express.Router();
 
@@ -35,30 +29,36 @@ export default ({
    * 2. Encrypt it the private key so only this server can decrypt: recipient === sender
    * 3. send response vapid public key and encrypted private key back to client
    */
-  app.get("/vapid", (request, response) => {
-    key.decryptSymmetrically(request.body);
-    const vapid = webpush.generateVAPIDKeys();
-    const encryptedPrivateKey = key.encrypt(key.peerId, vapid.privateKey);
-    response.send({ encryptedPrivateKey, publicKey: vapid.publicKey });
-  });
-
-  app.get("/test", (_request, response) => {
-    response.send(
-      `
-      <h1>EP²Push - Test</h1>
-      
-      <FORM method='POST' action='./' ><INPUT TYPE='SUBMIT' value='Post Test Push'/></FORM>
-      * should return TypeError: Cannot read properties of undefined (reading 'signature')
-      `
+  app.post("/vapid", (request, response) => {
+    const vapidRequest: EP2PushVapidRequest = request.body;
+    const secureChannel = serverKey.receiveHandshake(
+      vapidRequest.peerId,
+      vapidRequest.handshake
     );
+
+    if (secureChannel === undefined) {
+      response.status(666);
+      return;
+    }
+
+    const vapidKeys = webpush.generateVAPIDKeys();
+    // encrypt the key Asymmetrically for the server itself
+
+    const encryptedVapidKeys = serverKey.encrypt(serverKey.peerId, vapidKeys);
+
+    const vapidResponse: EP2PushVapidResponse = {
+      encryptedVapidKeys,
+      vapidPublicKey: vapidKeys.publicKey,
+    };
+    response.status(200).send(secureChannel.encrypt(vapidResponse));
   });
 
   /**
    * Post handler for push requests with body containing
    * `Array<{ destination: SymmetricallyEncryptedMessage, payload: SymmetricallyEncryptedMessage }>`
    */
-  app.post("/", (request, response) => {
-    pushAll(request.body as WebPushRequest)
+  app.post("/push", (request, response) => {
+    push(request.body as EP2PushMessageRequest)
       .then((res) => {
         response.status(200).send(res);
       })
@@ -67,29 +67,45 @@ export default ({
       });
   });
 
-  async function pushAll(wpr: WebPushRequest): Promise<number[]> {
-    const results = new Array<Promise<number>>();
-    const pushes = key
-      .receiveHandshake(wpr.senderId, wpr.handshake)
-      .decrypt(wpr.encryptedPushMessages);
-    pushes.forEach((spm) => {
-      results.push(
-        pushOne(
-          spm.encryptedEndpoint as unknown as SymmetricallyEncryptedMessage<webpush.PushSubscription>,
-          spm.encryptedPayload
-        )
-      );
-    });
-    return await Promise.all(results);
-  }
+  async function push(request: EP2PushMessageRequest): Promise<number> {
+    const pushMessage = serverKey
+      .receiveHandshake(request.peerId, request.handshake)
+      .decrypt(request.encryptedPushMessage);
 
-  async function pushOne(
-    destination: SymmetricallyEncryptedMessage<webpush.PushSubscription>,
-    payload: SymmetricallyEncryptedMessage<any>
-  ): Promise<number> {
+    const encryptedVapidKeys = pushMessage.authorization.encryptedVapidKeys;
+    Object.setPrototypeOf(
+      encryptedVapidKeys,
+      AsymmetricallyEncryptedMessage.prototype
+    );
+
+    // decrypt by the server, for the server
+    const { publicKey, privateKey } = encryptedVapidKeys.decrypt(
+      serverKey,
+      serverKey.peerId
+    );
+
+    webpush.setVapidDetails(config.vapidSubject, publicKey, privateKey);
+
+    const encryptedPushSubscription =
+      pushMessage.authorization.encryptedPushSubscription;
+
+    Object.setPrototypeOf(
+      encryptedPushSubscription,
+      AsymmetricallyEncryptedMessage.prototype
+    );
+
     const subscription: webpush.PushSubscription =
-      key.decryptSymmetrically(destination);
-    const payloadBytes = Buffer.from(JSON.stringify(payload));
+      serverKey.decryptSymmetrically(
+        encryptedPushSubscription
+      ) as any as webpush.PushSubscription;
+
+    // encryptedPushSubscription.decrypt(
+    //   serverKey
+    // ) as any as webpush.PushSubscription;
+
+    const payloadBytes = Buffer.from(
+      JSON.stringify(pushMessage.encryptedNotificationOptions)
+    );
     if (payloadBytes.length >= PUSH_MAX_BYTES) {
       throw Error(
         `Refusing push too big: ${payloadBytes.length} bytes. Max size: ${PUSH_MAX_BYTES} bytes.`
@@ -99,6 +115,24 @@ export default ({
       TTL: 1000 * 60,
     });
     return res.statusCode;
+  }
+
+  {
+    // TEST HANDLERS
+    app.get("/test", (_request, response) => {
+      response.send(
+        `
+      <h1>EP²Push - Test</h1>
+      
+      <FORM method='POST' action='./test' ><INPUT TYPE='SUBMIT' value='Post Test Push'/></FORM>
+      * should return VAPID public and private key
+      `
+      );
+    });
+    app.post("/test", (_request, response) => {
+      const keys = webpush.generateVAPIDKeys();
+      response.status(200).send(JSON.stringify(keys));
+    });
   }
 
   return app;

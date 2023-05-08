@@ -6,7 +6,7 @@ import {
   SecureChannel,
   EP2Key,
   type EncryptedHandshake,
-} from ".";
+} from "./index";
 
 /**
  * Key pair used for secure communication between two peers.

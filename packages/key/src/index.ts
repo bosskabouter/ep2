@@ -1,29 +1,21 @@
 import sodium from "libsodium-wrappers";
 
-/**
- * An unencrypted envelope that contains a signed and encrypted HandshakeMessage.
- */
+interface KeySet {
+  signKeyPair: sodium.KeyPair;
+  boxKeyPair: sodium.KeyPair;
+}
+
+interface HandshakeMessage {
+  nonceB64: string;
+  encryptedSharedSecretB64: string;
+}
+
 export interface EncryptedHandshake {
-  /**
-   * The base64-encoded encrypted HandshakeMessage.
-   */
   message: string;
-  /**
-   * The base64-encoded signature of the encrypted HandshakeMessage.
-   */
   signature: string;
-  /**
-   * The public signing key of the sender.
-   */
   publicSignKey: string;
 }
 
-/**
- *  To Decrypt a SecureMessage, the public key of the sender is needed because it is used to encrypt the message for the intended recipient. This allows only the recipient, who possesses the private key corresponding to the public key used in the encryption, to decrypt and read the message.
- *
-AsymmetricallyEncryptedMessage is encrypted using the public key of the intended recipient. While this provides confidentiality, it does not provide protection against potential attacks on the communication channel or on the recipient's private key.
-
- */
 export class AsymmetricallyEncryptedMessage<T> {
   constructor(readonly nonceB64: string, readonly cipherB64: string) {}
 
@@ -31,7 +23,6 @@ export class AsymmetricallyEncryptedMessage<T> {
     return EP2Key.decrypt<T>(sender, this);
   }
 }
-
 export class SymmetricallyEncryptedMessage<
   T
 > extends AsymmetricallyEncryptedMessage<T> {
@@ -42,28 +33,25 @@ export class SymmetricallyEncryptedMessage<
   ) {
     super(nonceB64, cipherB64);
   }
+
   override decrypt(EP2Key: EP2Key): T {
     return EP2Key.decryptSymmetrically<T>(this);
   }
 }
 
 /**
- * Key pair used for secure communication between two peers.
+ * `EP2Key`: a class representing the cryptographic keypair used by a peer during the protocol. It contains the peer's public and private keys for both signing and encryption, and it defines the `Peer ID` based on base64 encoded public encryption key. It can initiate a handshake with another peer, and receive a handshake from another peer to establish a common shared secret to be used with the `SecureChannel`.
  */
 export class EP2Key {
-  /**
-   *
-   * @param seed value to derive the key from. Can be a) a Uint8Array with seed for crypto_sign_seed_keypair, b) any string password to  derive the seed value from using crypto_generichash. Caution: this can results in a weak keyset if string doesn't contain enough entropy. c) undefined: A unique 32 byte hash is generated.
-   * @returns Instance of the EP2Key class
-   */
   public static async create(seed?: Uint8Array | string): Promise<EP2Key> {
     await sodium.ready;
-    // if seed is just a simple string password, convert it to full 32 byte seed value
-    let signKeyPair, boxKeyPair;
 
+    // if seed is just a simple string password, convert it to full 32 byte seed value
     if (typeof seed === "string") {
       seed = sodium.crypto_generichash(32, seed);
     }
+    let signKeyPair, boxKeyPair;
+
     if (seed != null) {
       signKeyPair = sodium.crypto_sign_seed_keypair(seed);
       boxKeyPair = sodium.crypto_box_seed_keypair(seed);
@@ -117,22 +105,12 @@ export class EP2Key {
     return JSON.stringify(keySet);
   }
 
-  /**
-   * @see create to initialize key
-   */
   protected constructor(readonly keySet: KeySet) {}
 
-  /**
-   * @returns Public identifier of this peer, based on the urlsafe base64 value of public box key (asymmetric encryption key - x25519). Used to initiate a secure channel and establish a shared secret through hybrid encryption/verification.
-   */
   get peerId(): string {
     return sodium.to_hex(this.keySet.boxKeyPair.publicKey);
   }
 
-  /**
-   *
-   * @param peerId
-   */
   static convertPeerId2PublicKey(peerId: string): Uint8Array {
     try {
       return sodium.from_hex(peerId);
@@ -141,11 +119,6 @@ export class EP2Key {
     }
   }
 
-  /**
-   *
-   * @param peerId Destination Peer ID to initiate a new secure channel with. This public box key is used in the hybrid encryption/verification handshake to establish a shared secret.
-   * @returns a shared secret (to be kept secret :), together with the handshake to send to the other peer in order for him to establish the same shared secret on his side.
-   */
   initiateHandshake(peerId: string): {
     secureChannel: SecureChannel;
     handshake: EncryptedHandshake;
@@ -183,15 +156,10 @@ export class EP2Key {
       publicSignKey: sodium.to_base64(this.keySet.signKeyPair.publicKey),
       signature: sodium.to_base64(signature),
     };
-    return { secureChannel: new SecureChannel(sharedSecret), handshake };
+    const secureChannel = new SecureChannel(sharedSecret);
+    return { secureChannel, handshake };
   }
 
-  /**
-   * Established the same shared secret as the sending peerId, using given encrypted handshake message.
-   * @param peerId
-   * @param handshake
-   * @returns the shared secret key
-   */
   receiveHandshake(
     peerId: string,
     handshake: EncryptedHandshake
@@ -213,7 +181,6 @@ export class EP2Key {
     const nonce = sodium.from_base64(message.nonceB64);
     const sharedSecret = sodium.from_base64(message.encryptedSharedSecretB64);
 
-    // The receiver uses their private box key to decrypt the shared key
     return new SecureChannel(
       sodium.crypto_box_open_easy(
         sharedSecret,
@@ -224,12 +191,6 @@ export class EP2Key {
     );
   }
 
-  /**
-   * In a normal SecureMessage, the public key of the sender is needed because it is used to encrypt the message for the intended recipient. This allows only the recipient, who possesses the private key corresponding to the public key used in the encryption, to decrypt and read the message.
-   * @param publicKey - The recipient's public key.
-   * @param message - The message to be encrypted.
-   * @returns The encrypted message and nonce.
-   */
   encrypt<T>(publicKey: string, object: T): AsymmetricallyEncryptedMessage<T> {
     const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
     const cipherB64 = sodium.to_base64(
@@ -246,12 +207,6 @@ export class EP2Key {
     );
   }
 
-  /**
-   * Decrypts a message originating from given sender's public key.
-   * @param originPublicKey - The sender's public key.
-   * @param encryptedMessage - The encrypted message and nonce.
-   * @returns The decrypted message.
-   */
   decrypt<T>(
     originPublicKey: string,
     encryptedMessage: AsymmetricallyEncryptedMessage<T>
@@ -268,30 +223,19 @@ export class EP2Key {
     );
   }
 
-  /**
-   * 1. Generate a random symmetric key for AES encryption
-   * 2. Encrypt the message with AES
-   * 3. Encrypt the given symmetric key with RSA public key
-   * @param publicKey public key to seal the symmetric key with
-   * @param message a message to be encrypted for given public key
-   * @returns an encrypted message with symmetric key sealed for given public key
-   */
   static encrypt<T>(
     publicKey: string,
     obj: T
   ): SymmetricallyEncryptedMessage<T> {
-    // Generate a random symmetric key for AES encryption
     const sharedSecret = sodium.randombytes_buf(
       sodium.crypto_secretbox_KEYBYTES
     );
 
-    // Encrypt the message with AES
     const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
     const cipherB64 = sodium.to_base64(
       sodium.crypto_secretbox_easy(JSON.stringify(obj), nonce, sharedSecret)
     );
 
-    // Encrypt the symmetric key with RSA public key of the relay server
     const encryptedKeyB64 = sodium.to_base64(
       sodium.crypto_box_seal(
         sharedSecret,
@@ -305,13 +249,6 @@ export class EP2Key {
     );
   }
 
-  /**
-   * Synonym for static encrypt
-   * @see SecureChannel.encrypt
-   * @param publicKey
-   * @param obj
-   * @returns
-   */
   encryptSymmetrically<T>(
     publicKey: string,
     obj: T
@@ -319,11 +256,6 @@ export class EP2Key {
     return EP2Key.encrypt(publicKey, obj);
   }
 
-  /**
-   *
-   * @param relayedMessage
-   * @returns
-   */
   decryptSymmetrically<T>(relayedMessage: SymmetricallyEncryptedMessage<T>): T {
     const sharedSecret = sodium.crypto_box_seal_open(
       sodium.from_base64(relayedMessage.encryptedKeyB64),
@@ -331,7 +263,6 @@ export class EP2Key {
       this.keySet.boxKeyPair.privateKey
     );
 
-    // Decrypt the message with the recovered symmetric key
     return JSON.parse(
       sodium.to_string(
         sodium.crypto_secretbox_open_easy(
@@ -343,63 +274,37 @@ export class EP2Key {
     );
   }
 }
-/**
- * The key contains an encryption and a signing key, based on the same seed
- */
-export interface KeySet {
-  signKeyPair: sodium.KeyPair;
-  boxKeyPair: sodium.KeyPair;
-}
 
 /**
- * A handshake message that is sent between peers during the secure handshake process.
- */
-interface HandshakeMessage {
-  /**
-   * prevent replay attacks.
-   */
-  nonceB64: string;
-  /**
-   * A string representing the shared secret key.
-   */
-  encryptedSharedSecretB64: string;
-}
-
-/**
- * Once a shared secret has been established in between two participants during handshake, a secure channel is able to encrypt and decrypt messages using this shared common secret
+ * A class representing a secure channel between two peers. It is initialized with a shared symmetric key and provides methods to encrypt and decrypt messages.
  */
 export class SecureChannel {
-  /**
-   *
-   * @param sharedSecret
-   */
   constructor(public readonly sharedSecret: Uint8Array) {}
 
   encrypt<T>(obj: T): AsymmetricallyEncryptedMessage<T> {
-    // Generate a new random nonce for each message
     const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
-    // Encrypt the message with the shared secret and nonce
-    const cipherB64 = sodium.to_base64(
-      sodium.crypto_secretbox_easy(
-        sodium.from_string(JSON.stringify(obj)),
-        nonce,
-        this.sharedSecret
-      )
-    );
     return new AsymmetricallyEncryptedMessage(
       sodium.to_base64(nonce),
-      cipherB64
+      sodium.to_base64(
+        sodium.crypto_secretbox_easy(
+          sodium.from_string(JSON.stringify(obj)),
+          nonce,
+          this.sharedSecret
+        )
+      )
     );
   }
 
   decrypt<T>(encrypted: AsymmetricallyEncryptedMessage<T>): T {
-    // Decrypt the message with the shared secret and nonce
-    const decryptedBytes = sodium.crypto_secretbox_open_easy(
-      sodium.from_base64(encrypted.cipherB64),
-      sodium.from_base64(encrypted.nonceB64),
-      this.sharedSecret
+    return JSON.parse(
+      sodium.to_string(
+        sodium.crypto_secretbox_open_easy(
+          sodium.from_base64(encrypted.cipherB64),
+          sodium.from_base64(encrypted.nonceB64),
+          this.sharedSecret
+        )
+      )
     );
-    return JSON.parse(sodium.to_string(decryptedBytes));
   }
 }
 

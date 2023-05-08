@@ -9,6 +9,6 @@
     "outDir": "out/cjs",
     "declarationDir": "out"
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*.ts"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

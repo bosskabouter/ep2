@@ -1,62 +1,59 @@
 import axios from "axios";
-import EventEmitter from "eventemitter3";
 
+import { AsymmetricallyEncryptedMessage, EP2Key } from "@ep2/key";
+import { addServiceWorkerHandle as addServiceWorkerHandle } from "./swutil";
 import {
-  type AsymmetricallyEncryptedMessage,
-  EP2Key,
-  type EncryptedHandshake,
-  type SymmetricallyEncryptedMessage,
-} from "@ep2/key";
-import { handleSW } from "./swutil";
-
-/**
- * The body of a push request from EP2Push to EP2PushServer contains a JSON.toString(ep2PushRequest)
- */
-export interface EP2PushRequest {
-  encryptedPushMessages: AsymmetricallyEncryptedMessage<EP2PushMessage[]>;
-  handshake: EncryptedHandshake;
-  senderId: string;
-}
-
-/**
- * A PushMessage
- */
-export interface EP2PushMessage {
-  encryptedEndpoint: SymmetricallyEncryptedMessage<PushSubscription>;
-  encryptedPayload: SymmetricallyEncryptedMessage<NotificationOptions>;
-}
-
-export interface EP2PushConfig {
-  host: string;
-  port: number;
-  path: string;
-  publicKey: string;
-  vapidKey: string;
-}
-
-export interface EP2PushEvents {
-  receivedMessage: (payload: any, senderId: string) => void;
-}
+  EP2PushConfig,
+  EP2PushMessage,
+  EP2PushMessageRequest,
+  EP2PushAuthorization,
+  EP2PushVapidRequest,
+  EP2PushVapidResponse,
+} from "./";
+import defaultConfig from "./config";
+import EventEmitter from "eventemitter3";
+import { EP2PushEvents, EP2PushI } from "./types";
 
 /**
  * Client cLass with initialization for the given server config and client key. Enables pushing (and receiving) of encrypted messages through the push server.
+
+
+
+In `EP2Push`, `VapidSubscription` is a `VAPID key pair` where the `private key` is `asymmetrically encrypted` *by and for* the server. The Vapid keys are generated on the server, as is typical with push setup. However, unlike in a traditional push setup, the ownership of the keys is transferred to the peer and forgotten on the server. 
+
+When a requesting EP2Push client makes a valid handshake with the EP2PushServer, the server sends out a new key pair, but encrypts it asymmetrically for itself. This is because it is only of interest to the server at the time of pushing. 
+
+The public key, on the other hand, is needed to register the peer's browser's PushManager. This allows the receiving owner of the VapidSubscription to subscribe to their own Vapid public key, which they only receive in plain text while subscribing. 
+
+Once the client has subscribed, they can throw away the public key, but must keep the encrypted VapidKeys Keypair since they are needed by the server at the time of pushing. When this peer authorizes another peer to push, the encrypted key pair is sent to the other peer. 
+
+When the other peer needs to push, they will send the encrypted key pair to the server along with the payload of the notification. The payload is encrypted symmetrically with the public key of the origin so that the origin can decrypt the received message from their endpoint and show the popup.
+
  */
-export class EP2Push extends EventEmitter<EP2PushEvents> {
+
+export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
   /**
    * Encode the pushSubscription symmetrically with the server public key so it is safe to share with other contacts. Only the server can get your subscription data.
    */
 
   /**
+   * USE `await EP2Push.register()` to register a EP2Push instance!
+   *
    * @param pushSubscription
    * @param key
    * @param config
    * @see EP2Push.register
    */
   constructor(
-    private readonly key: EP2Key,
-    readonly config: EP2PushConfig,
-    private readonly postURI: string,
-    readonly sharedSubscription: SymmetricallyEncryptedMessage<PushSubscription>
+    /**
+     * The pushSubscription safe to share with other peers.
+     */
+    readonly sharedSubscription: EP2PushAuthorization,
+
+    private readonly ep2key: EP2Key,
+
+    private readonly config: EP2PushConfig,
+    private readonly postURI: string
   ) {
     super();
   }
@@ -64,70 +61,140 @@ export class EP2Push extends EventEmitter<EP2PushEvents> {
   /**
    * Gets the service worker and asks for a push subscription.
    * @param secureKey
-   * @param serverConfig
+   * @param config
    * @returns a EP2Push instance registered, ready to push and be pushed, or undefined when service worker did not return a registration or user denied notifications.
    */
+  // override
   static async register(
-    secureKey: EP2Key,
-    serverConfig: EP2PushConfig
-  ): Promise<EP2Push | undefined> {
+    ep2key: EP2Key,
+    config?: EP2PushConfig
+  ): Promise<EP2Push | null> {
+    config =
+      config === undefined ? defaultConfig : { ...defaultConfig, ...config };
+    /**
+     * Service endpoint as configured in `EP2PushConfig`
+     */
+    const postURI = `${config.secure ? "https" : "http"}://${config.host}:${
+      config.port
+    }${config.path}`;
+
+    // Request EP2VapidSubscription from the server
+    const vapidSubscription = await EP2Push.getVapidKeys(
+      ep2key,
+      config.ep2PublicKey,
+      postURI
+    );
+
+    // Use the newly created Vapid keys to subscribe to.
+    const subs = await EP2Push.getPushSubscription(
+      vapidSubscription.vapidPublicKey
+    );
+
+    if (subs === undefined) {
+      console.warn("No subscription, no EP2Push");
+      return null;
+    }
+
+    // Setup the service worker
+    addServiceWorkerHandle();
+
+    updateEP2ServiceWorker(ep2key);
+
+    const encryptedPushSubscription = EP2Key.encrypt(config.ep2PublicKey, subs);
+
+    const sharedSubscription: EP2PushAuthorization = {
+      encryptedPushSubscription,
+      encryptedVapidKeys: vapidSubscription.encryptedVapidKeys,
+    };
+
+    return new this(sharedSubscription, ep2key, config, postURI);
+  }
+
+  /**
+   * First part of the process is to retrieve an EP2VapidSubscription from EP2PushServer. It contains the Vapid public key needed to register the PushNotifications in step 2.
+   * @returns a new pair of Vapid Keys for this client from the server. The server encrypts the private key so that only he can use it. The public key is send 'plain-text' to be able to use it with its `PushManager`
+   */
+  public static async getVapidKeys(
+    ep2key: EP2Key,
+    serverPublicKey: string,
+    postURI: string
+  ): Promise<EP2PushVapidResponse> {
+    const initiateHandshake = ep2key.initiateHandshake(serverPublicKey);
+    const request: EP2PushVapidRequest = {
+      handshake: initiateHandshake.handshake,
+      peerId: ep2key.peerId,
+      path: "/vapid",
+    };
+    const response: AsymmetricallyEncryptedMessage<EP2PushVapidResponse> =
+      await axios.post(postURI + "/vapid", request);
+    return initiateHandshake.secureChannel.decrypt(response);
+  }
+
+  /**
+   *
+   * @param {string} vapidPublicKey as received from the `EP2PushServer` during phase 1.
+   * @returns {Promise<PushSubscription | undefined>} A `PushSubscription` from the browser, subscribed to the vapid public key given by the `EP2PushServer` in `EP2VapidSubscription.publicKey`
+   */
+  private static async getPushSubscription(
+    vapidPublicKey: string
+  ): Promise<PushSubscription | undefined> {
     const serviceWorkerRegistration =
       await navigator.serviceWorker?.getRegistration();
 
     if (serviceWorkerRegistration === undefined) {
       console.warn("EP2PUSH: No serviceWorker Registration");
-      return undefined;
+      return;
     }
 
     const subs = await serviceWorkerRegistration.pushManager.subscribe({
-      applicationServerKey: serverConfig.vapidKey,
+      applicationServerKey: vapidPublicKey,
       userVisibleOnly: true,
     });
     if (subs === undefined) {
       console.warn("EP2PUSH: PushManager did not subscribe");
-      return undefined;
+      return;
     }
-
-    updateEP2ServiceWorker(secureKey);
-
-    handleSW();
-    const postURI = `${serverConfig.host}${serverConfig.path}/`;
-    const sharedSubscription = EP2Key.encrypt(serverConfig.publicKey, subs);
-
-    return new this(secureKey, serverConfig, postURI, sharedSubscription);
+    return subs;
   }
-
   /**
-   *
-   * @param msg
+   * Pushes `NotificationOptions` to the given destination EP2Push PeerID, using the `SymmetricallyEncryptedMessage<PushSubscription>` given by the receiver.
+   * @param notificationOptions
    * @param peerId
    * @param shareSubscription
    * @returns
    */
+
+  // override
   async pushText(
-    msg: NotificationOptions,
-    peerId: string,
-    shareSubscription: SymmetricallyEncryptedMessage<PushSubscription>
+    notificationOptions: NotificationOptions,
+    receiver: string,
+    pushVapid: EP2PushAuthorization
   ): Promise<boolean> {
-    const spm: EP2PushMessage = {
-      encryptedEndpoint: shareSubscription,
-      encryptedPayload: EP2Key.encrypt(peerId, msg),
-    };
-    return await this.pushMessages([spm]);
-  }
-
-  async pushMessages(ep2PushMessages: EP2PushMessage[]): Promise<boolean> {
-    const { secureChannel, handshake } = this.key.initiateHandshake(
-      this.config.publicKey
+    const { secureChannel, handshake } = this.ep2key.initiateHandshake(
+      this.config.ep2PublicKey
     );
-    const encryptedPushMessages = secureChannel.encrypt(ep2PushMessages);
-    const webPushRequest: EP2PushRequest = {
+    const encryptedNotificationOptions = this.ep2key.encryptSymmetrically(
+      receiver,
+      notificationOptions
+    );
+    const pushMessage: EP2PushMessage = {
+      encryptedNotificationOptions,
+      pushVapid,
+    };
+    const encryptedPushMessage: AsymmetricallyEncryptedMessage<EP2PushMessage> =
+      secureChannel.encrypt(pushMessage);
+
+    const request: EP2PushMessageRequest = {
+      encryptedPushMessage,
       handshake,
-      encryptedPushMessages,
-      senderId: this.key.peerId,
+      peerId: this.ep2key.peerId,
+      path: "/push",
     };
 
-    const response = await axios.post(this.postURI, webPushRequest);
+    const response = await axios.post(this.postURI, {
+      handshake,
+      webPushRequest: request,
+    });
 
     return (
       response !== undefined && response !== null && response.status === 200

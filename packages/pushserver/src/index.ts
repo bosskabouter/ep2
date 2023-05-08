@@ -3,7 +3,7 @@ import http from "node:http";
 import https from "node:https";
 
 import { createInstance } from "./instance";
-import type { IConfig } from "./config";
+import type { EP2PushServerConfig } from "./config";
 import defaultConfig from "./config";
 import { type EP2Key } from "@ep2/key";
 export * from "@ep2/key";
@@ -11,11 +11,11 @@ export * from "@ep2/key";
 function ExpressEP2PushServer(
   key: EP2Key,
   server: https.Server | http.Server,
-  options?: Partial<IConfig>
+  options?: Partial<EP2PushServerConfig>
 ): Express {
   const app = express();
 
-  const newOptions: IConfig = {
+  const newOptions: EP2PushServerConfig = {
     ...defaultConfig,
     ...options,
   };
@@ -42,12 +42,12 @@ function ExpressEP2PushServer(
 
 function EP2PushServer(
   key: EP2Key,
-  options: Partial<IConfig> = {},
+  options: Partial<EP2PushServerConfig> = {},
   callback?: (server: https.Server | http.Server) => void
 ): Express {
   const app = express();
 
-  let newOptions: IConfig = {
+  let newOptions: EP2PushServerConfig = {
     ...defaultConfig,
     ...options,
   };

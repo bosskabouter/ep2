@@ -1,16 +1,16 @@
 {
-  // "compileOnSave": true,
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "@ep2/key/*": ["packages/key/*"],
       "@ep2/key-bip/*": ["packages/key-bip/*"],
       "@ep2/peer/*": ["packages/peer/*"],
-      "@ep2/push/*": ["packages/push/*"],
       "@ep2/peerserver/*": ["packages/peerserver/*"],
+      "@ep2/push/*": ["packages/push/*"],
       "@ep2/pushserver/*": ["packages/pushserver/*"]
     },
     "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
+    "target": "ES5",
     "composite": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
@@ -52,7 +52,7 @@
       "path": "packages/pushserver"
     }
   ],
-  "include": ["packages/*/src/**/*"],
+  "include": ["packages/*/src/**/*.ts"],
   "exclude": ["**/dist/**", "**/out/**", "**/dev-dist/**", "**/coverage/**,"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

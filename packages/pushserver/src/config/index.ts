@@ -1,6 +1,6 @@
 import type { CorsOptions } from "cors";
 
-export interface IConfig {
+export interface EP2PushServerConfig {
   readonly vapidSubject: string;
   readonly host: string;
   readonly port: number;
@@ -21,7 +21,7 @@ export interface IConfig {
   pushMaxBytes: number;
 }
 
-const defaultConfig: IConfig = {
+const defaultConfig: EP2PushServerConfig = {
   vapidSubject: "mailto:test@test.org",
   host: "::",
   port: 9000,

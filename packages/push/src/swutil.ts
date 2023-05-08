@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-export async function handleSW(): Promise<boolean> {
+export async function addServiceWorkerHandle(): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
     window.addEventListener("load", () => {
       if ("serviceWorker" in navigator) {
