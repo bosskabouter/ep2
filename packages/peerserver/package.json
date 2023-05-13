@@ -24,7 +24,7 @@
     "coverage": "jest --coverage"
   },
   "author": "Paul Kuit",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@ep2/key": "^1.0.0",
     "eventemitter3": "^5.0.1",

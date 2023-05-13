@@ -1,7 +1,8 @@
 // import { DataConnection } from 'peerjs'
 // import { jest } from '@jest/globals'
 
-import { EP2Peer, EP2Key } from "../src";
+import EP2Key from "@ep2/key";
+import { EP2Peer } from "../src";
 
 // Import the PeerJS library
 // jest.mock('peerjs', () => {
@@ -14,8 +15,6 @@ import { EP2Peer, EP2Key } from "../src";
 //   return mockPeer
 // })
 
-let key1: EP2Key; //, key2: SecurePeerKey
-
 // //@ts-ignore
 // global.RTCPeerConnection = jest.fn(() => ({
 //   createDataChannel: jest.fn(),
@@ -24,15 +23,14 @@ let key1: EP2Key; //, key2: SecurePeerKey
 //   // Add a mock implementation for the generateCertificate method
 
 // }))
-describe("OnlineClient JS - client Connecting real server", () => {
-  beforeAll(async () => {
-    key1 = await EP2Key.create();
+describe("EP2Peer - Connecting to public peer JS server", () => {
+  let key1: EP2Key; //, key2: SecurePeerKey
 
-    // key2 = await SecurePeerKey.create()
-    expect(key1).toBeDefined();
+  beforeAll(async () => {
+    expect((key1 = await EP2Key.create())).toBeDefined();
   });
 
-  test("New OnlineClient connects to any peerserver", (done) => {
+  test("EP2Peer connects to any peerserver", (done) => {
     const peer = new EP2Peer(key1);
     expect(peer.disconnected).toBe(false);
     if (!peer.disconnected) {
@@ -47,7 +45,7 @@ describe("OnlineClient JS - client Connecting real server", () => {
 
       peer.on("open", () => {
         clearTimeout(timeout);
-        expect(peer.id).toBe(key1.peerId);
+        expect(peer.id).toBe(key1.id);
         expect(peer.disconnected).toBe(false);
         peer.disconnect();
         done();

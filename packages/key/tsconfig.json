@@ -3,7 +3,7 @@
   "compilerOptions": {
     "rootDir": "src",
     "module": "commonjs",
-    "target": "es5",
+    "target": "ES2015",
     "lib": ["es6"],
     "composite": true,
     "outDir": "out/cjs",

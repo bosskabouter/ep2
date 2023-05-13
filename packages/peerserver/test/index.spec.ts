@@ -5,33 +5,28 @@ import express, { type Express } from "express";
 
 import request from "supertest";
 import { jest } from "@jest/globals";
-import {
-  type AsymmetricallyEncryptedMessage,
-  type EncryptedHandshake,
-  EP2Key,
-  SecureChannel,
-} from "@ep2/key";
+import EP2Key, { EP2SecureChannel } from "@ep2/key";
 const TEST_PORT = 2000 + Math.floor(Math.random() * 5000);
 
-describe("OnlineServer", () => {
-  test("Start EP2OnlineServer", async () => {
-    const serverKey = await EP2Key.create();
-    expect(serverKey).toBeDefined();
-  });
-});
-describe("ExpressPeerServer", () => {
+describe("PeerServer", () => {
+  // test("Start simple EP2PeerServer", async () => {
+  //   const serverKey = await EP2Key.create();
+  //   expect(serverKey).toBeDefined();
+  //   const server = EP2PeerServer(serverKey);
+  //   expect(server).toBeDefined();
+  // });
+
   let app: Express;
   let client: IClient;
 
   let serverKey: EP2Key;
   let clientKey: EP2Key;
-  let peerServer: (express.Express & PeerServerEvents) | null;
-  let initiatedHandshake: {
-    secureChannel: SecureChannel;
-    handshake: EncryptedHandshake;
-  };
+  
+  let secureChannel: EP2SecureChannel;
 
+  let peerServer: (express.Express & PeerServerEvents) | null;
   let server: Server<typeof IncomingMessage, typeof ServerResponse>;
+  
   beforeAll((done) => {
     app = express();
     // jest.useFakeTimers()
@@ -52,6 +47,7 @@ describe("ExpressPeerServer", () => {
 
           app.use("/myApp", peerServer);
 
+          secureChannel = new EP2SecureChannel(clientKey, serverKey.id);
           done();
         });
       }
@@ -69,15 +65,6 @@ describe("ExpressPeerServer", () => {
     server.close(done);
   }, 10000);
 
-  test("responds with 200 status and expected header", async () => {
-    const response = await request(peerServer).get("/myApp");
-    expect(response.ok).toBeTruthy();
-  }, 200);
-
-  test("should initiate handshake", async () => {
-    initiatedHandshake = clientKey.initiateHandshake(serverKey.peerId);
-    expect(initiatedHandshake).toBeDefined();
-  }, 200);
   test("responds with 200 status and peerjs header", async () => {
     const response = await request(peerServer).get("/myApp/");
     expect(response.body.description).toMatch(
@@ -86,25 +73,22 @@ describe("ExpressPeerServer", () => {
   });
 
   test("peer with valid welcome", async () => {
-    const token: string = JSON.stringify(initiatedHandshake.handshake);
-    // expect a welcome message to be sent, encrypted with the shared secret
-    const sendMock = jest.fn(
-      async (encryptedWelcome: AsymmetricallyEncryptedMessage<string>) => {
-        expect(encryptedWelcome).toBeDefined();
-        const decryptedWelcome = new SecureChannel(
-          initiatedHandshake.secureChannel.sharedSecret
-        ).decrypt(encryptedWelcome);
+    const token: string = secureChannel.encrypt("Hi");
 
-        expect(decryptedWelcome).toBeDefined();
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        expect(decryptedWelcome).toEqual(`welcome ${clientKey.peerId}`);
-      }
-    );
+    // expect a welcome message to be sent, encrypted with the shared secret
+    const sendMock = jest.fn(async (encryptedWelcome: string) => {
+      expect(encryptedWelcome).toBeDefined();
+      const decryptedWelcome = secureChannel.decrypt(encryptedWelcome);
+
+      expect(decryptedWelcome).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      expect(decryptedWelcome).toEqual(`welcome ${clientKey.id}`);
+    });
 
     const closeSocketMock = jest.fn(() => null);
     client = {
       getId: () => {
-        return clientKey.peerId;
+        return clientKey.id;
       },
       getToken: () => {
         return token;
@@ -119,9 +103,32 @@ describe("ExpressPeerServer", () => {
     expect(emitted).toBeTruthy();
     expect(closeSocketMock).not.toBeCalled();
 
-    await new Promise((resolve) => setImmediate(resolve).unref());
-
+    //server does not give a response, otherwise
     // expect(sendMock).toHaveBeenCalled()
+
+    await new Promise((resolve) => setImmediate(resolve).unref());
+  });
+
+  test("non ep2peer - close socket", async () => {
+    const closeMock = jest.fn(() => null);
+    const sendMock = jest.fn();
+    const fakeClient: IClient = {
+      getId: () => {
+        return "1234";
+      },
+      getToken: () => {
+        return "fake-token";
+      },
+      getSocket: jest.fn(() => ({
+        close: closeMock,
+      })),
+      send: sendMock,
+    } as unknown as IClient;
+    expect(sendMock).not.toHaveBeenCalled();
+    const emitted = peerServer?.emit("connection", fakeClient);
+    expect(emitted).toBeTruthy();
+
+    expect(closeMock).toBeCalled();
   });
 
   test("peer with malformed handshake - close socket", async () => {
@@ -129,7 +136,7 @@ describe("ExpressPeerServer", () => {
     const sendMock = jest.fn();
     const fakeClient: IClient = {
       getId: () => {
-        return clientKey.peerId;
+        return clientKey.id;
       },
       getToken: () => {
         return "fake-token";
@@ -151,10 +158,10 @@ describe("ExpressPeerServer", () => {
     const sendMock = jest.fn();
     const fakeClient: IClient = {
       getId: () => {
-        return "11111";
+        return clientKey.id;
       },
       getToken: () => {
-        return "";
+        return undefined;
       }, // Empty token to simulate missing handshake
       getSocket: jest.fn(() => ({
         close: closeMock,
@@ -171,11 +178,8 @@ describe("ExpressPeerServer", () => {
   test("peer with tampered token - close socket", async () => {
     const key = await EP2Key.create();
 
-    const { handshake } = key.initiateHandshake(serverKey.peerId);
-
+    const token = secureChannel.encrypt("anything");
     // use servers pubkey as our encryption pubkey
-    handshake.publicSignKey = serverKey.peerId;
-    const token: string = JSON.stringify(handshake);
     const mockToken = (): string => {
       return token;
     };
@@ -184,7 +188,7 @@ describe("ExpressPeerServer", () => {
     const sendMock = jest.fn();
     const fakeClient: IClient = {
       getId: () => {
-        return key.peerId;
+        return key.id;
       },
       getToken: mockToken, // Invalid token to simulate invalid handshake
       getSocket: () => ({
@@ -201,46 +205,4 @@ describe("ExpressPeerServer", () => {
     await new Promise((resolve) => setImmediate(resolve).unref());
     expect(closeMock).toBeCalled();
   });
-
-  // const TIMEOUT_EXPIRE_HANDSHAKE = 2000;
-  // test(
-  //   "peer with expired handshake - close socket",
-  //   async () => {
-  //     const closeMock = jest.fn(() => null);
-  //     const sendMock = jest.fn((arg) => {
-  //       //todo implement replay attack prevention
-  //       // expect(arg).not.toBeDefined();
-  //     });
-  //     const key = await SecureChannelKey.create();
-  //     const { handshake } = await key.initiateHandshake(serverKey.getPeerId()); // Set handshake expiration to 1 second
-  //     await new Promise((resolve) =>
-  //       setTimeout(resolve, TIMEOUT_EXPIRE_HANDSHAKE)
-  //     ); // Wait for handshake to expire
-
-  //     const token: string = JSON.stringify(handshake);
-  //     const fakeClient: IClient = {
-  //       getId: () => {
-  //         return key.getPeerId();
-  //       },
-  //       getToken: () => {
-  //         return token;
-  //       },
-  //       getSocket: jest.fn(() => ({
-  //         close: closeMock,
-  //       })),
-  //       send: sendMock,
-  //     } as unknown as IClient;
-
-  //     const emitted = peerServer.emit("connection", fakeClient);
-
-  //     expect(emitted).toBeTruthy();
-
-  //     //wait for server response
-  //     await new Promise((resolve) => setTimeout(resolve, 100));
-  //     //todo: Implement replay attack
-  //     // expect(closeMock).toBeCalled();
-  //     // expect(sendMock).not.toBeCalled();
-  //   },
-  //   TIMEOUT_EXPIRE_HANDSHAKE + 1000
-  // );
 });

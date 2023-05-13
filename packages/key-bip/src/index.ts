@@ -1,7 +1,7 @@
 import * as bip39 from "bip39";
 import * as bip32 from "bip32";
 import * as ecc from "tiny-secp256k1";
-import { EP2Key } from "@ep2/key";
+import EP2Key from "@ep2/key";
 
 const KEY_STRENGTH_B = 128;
 
@@ -36,8 +36,8 @@ export class EP2KeyBIP extends EP2Key {
   private constructor(
     public readonly mnemonic: string,
     public masterKey: bip32.BIP32Interface,
-    securePeerKey: EP2Key
+    simpleKey: EP2Key
   ) {
-    super(securePeerKey.keySet);
+    super(simpleKey.seed, simpleKey.keySet);
   }
 }

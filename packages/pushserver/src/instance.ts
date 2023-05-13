@@ -1,8 +1,8 @@
-import { type EP2Key } from "./";
 import express from "express";
 
 import { type EP2PushServerConfig } from "./config";
 import { Api } from "./api";
+import EP2Key from "@ep2/key";
 
 export const createInstance = ({
   key,

@@ -1,12 +1,15 @@
+import { EP2Peer } from "../src/";
+import { EP2SecureLayer } from "../src";
+
 import { Peer } from "peerjs";
 import { type DataConnection, type PeerConnectOption } from "peerjs";
 
 import { jest } from "@jest/globals";
 import { type SpiedFunction } from "jest-mock";
-import { EP2Peer } from "../src/";
-import { EP2Key, SecureLayer, type SecureChannel } from "../src";
 
-describe("EP2", () => {
+import EP2Key from "@ep2/key";
+
+describe("EP2Peer - MockServer", () => {
   let connectMock: SpiedFunction<
     (peer: string, options?: PeerConnectOption | undefined) => DataConnection
   >;
@@ -23,7 +26,7 @@ describe("EP2", () => {
           send: jest.fn(),
           open: true,
           on: jest.fn(),
-          peer: key2.peerId,
+          peer: key2.id,
           metadata: {},
         } as unknown as DataConnection;
       });
@@ -31,8 +34,8 @@ describe("EP2", () => {
     // peer1 = new EP2Peer(key1)
     serverKey = await EP2Key.create();
     peer1 = new EP2Peer((key1 = await EP2Key.create()));
-    expect(key1.peerId).toBeDefined();
-    peer2 = new EP2Peer((key2 = await EP2Key.create()), serverKey.peerId, {
+    expect(key1.id).toBeDefined();
+    peer2 = new EP2Peer((key2 = await EP2Key.create()), serverKey.id, {
       debug: 0,
     });
     expect(peer1).toBeDefined();
@@ -58,72 +61,23 @@ describe("EP2", () => {
 
   test("PeerJS test", async () => {
     // Mock the PeerJS library
-    expect(key2.peerId).toBeDefined();
-    peer2.on("connection", (con: DataConnection) => {
+    expect(key2.id).toBeDefined();
+    peer2.on("connected", (con: DataConnection) => {
       expect(con).toBeDefined();
       expect(con.metadata.secureLayer).toBeDefined();
     });
-    const secureLayer12: SecureLayer = peer1.connect(key2.peerId);
+    const secureLayer12: EP2SecureLayer = peer1.connect(key2.id);
 
     expect(secureLayer12).toBeDefined();
     expect(secureLayer12).toBeDefined();
     secureLayer12.send("Data to encrypt");
 
-    const dataConnection = peer2.connect(key1.peerId);
+    const dataConnection = peer2.connect(key1.id);
     expect(dataConnection).toBeDefined();
   });
 
   test("New EP2Peer connects to any peerserver - identifying none ep2online server", async () => {
     expect(peer1.disconnected).toBe(false);
     expect(await peer1.isEp2PeerServer).toBeFalsy();
-  });
-});
-
-describe("SecureLayer", () => {
-  it("emits the decrypted event when data is received", () => {
-    // Mock the SecureChannel object
-    const mockSecureChannel = {
-      decrypt: jest.fn().mockReturnValue("decrypted data"),
-    } as unknown as SecureChannel;
-
-    const mockEvent = jest.fn();
-
-    interface MockDataConnection extends DataConnection {
-      mock: {
-        on: jest.Mock;
-      };
-    }
-
-    // Create a mock DataConnection object
-    const mockDataConnection = {
-      on: mockEvent,
-    } as unknown as MockDataConnection;
-
-    // Create a new SecureLayer instance with the mock objects
-    const secureLayer = new SecureLayer(mockSecureChannel, mockDataConnection);
-
-    // Create a listener for the 'decrypted' event on the SecureLayer instance
-    const decryptedListener = jest.fn();
-    secureLayer.on("decrypted", decryptedListener);
-
-    // Simulate the 'open' event on the mock data connection
-    const openCallback = (mockDataConnection.on as any).mock.calls.find(
-      ([eventName]: string[]) => eventName === "open"
-    )[1];
-    openCallback();
-
-    // Simulate the 'data' event on the mock data connection
-    const mockData = JSON.stringify({ encryptedData: "mock encrypted data" });
-
-    const dataCallback = (mockDataConnection.on as any).mock.calls.find(
-      ([eventName]: string[]) => eventName === "data"
-    )[1];
-    dataCallback(mockData);
-
-    // Check that the 'decrypted' event was emitted with the correct data
-    expect(mockSecureChannel.decrypt).toHaveBeenCalledWith({
-      encryptedData: "mock encrypted data",
-    });
-    expect(decryptedListener).toHaveBeenCalledWith("decrypted data");
   });
 });

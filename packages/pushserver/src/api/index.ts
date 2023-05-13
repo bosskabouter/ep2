@@ -3,7 +3,7 @@ import express from "express";
 import PublicApi from "./v1/public";
 import type { EP2PushServerConfig } from "../config";
 import * as publicContent from "../app.json";
-import { type EP2Key } from "@ep2/key";
+import EP2Key from "@ep2/key";
 
 export const Api = ({
   key,

@@ -10,3 +10,4 @@ coverage/
 **/*.test.json
 lerna-debug.log
 example/client/dev-dist/registerSW.js
+packages/key/testkey.spec.json

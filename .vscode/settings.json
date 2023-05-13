@@ -1,13 +1,16 @@
 {
   "cSpell.words": [
+    "afternm",
+    "beforenm",
     "ciphertext",
+    "espsk",
     "generichash",
+    "HEADERBYTES",
     "KEYBYTES",
     "keypair",
     "Kuit",
     "libsodium",
     "NONCEBYTES",
-    "nvalid",
     "peerjs",
     "peerserver",
     "precache",
@@ -18,8 +21,7 @@
     "scalarmult",
     "secp",
     "secretbox",
-    "swutil",
-    "theserverkey",
+    "SEEDBYTES",
     "URLSAFE",
     "webpush",
     "xchacha"

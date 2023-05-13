@@ -1,6 +1,6 @@
 {
   "name": "@ep2/key",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publishConfig": {
     "access": "public"
   },
@@ -14,7 +14,7 @@
     "out/**/*"
   ],
   "bin": {
-    "generateKey": "./out/index.js"
+    "ep2key": "./out/cjs/cli.js"
   },
   "exports": {
     ".": {
@@ -37,13 +37,13 @@
   },
   "keywords": [
     "ep2",
-    "peerjs",
     "libsodium",
     "hybrid",
-    "security",
-    "encrypt",
-    "sign",
-    "handshake"
+    "encryption",
+    "asymmetric",
+    "symmetric",
+    "handshake",
+    "secure"
   ],
   "repository": {
     "type": "git",

@@ -1,15 +1,60 @@
 # `EP2Key`
 
-`EP2Key` is a TypeScript package that provides a key pair for secure communication between peers using the [`sodium`](https://github.com/jedisct1/libsodium.js) cryptography library.
+`EP2Key` is a TypeScript library that provides secure communication between key holders using the [`sodium`](https://github.com/jedisct1/libsodium.js) cryptography library. It is the core component of  [ep² - encrypted peer*push](../../) library
+.
 
-It offers two types of encryption: `asymmetric` encryption, where the message is encrypted with the recipient's public key, and `symmetric` encryption, where the message is encrypted with a shared secret key.
+It offers two types of encryption:
+
+- `asymmetric` encryption, where the message is encrypted with the recipient's public key, and
+- `symmetric` encryption, where the message is encrypted with a shared secret key.
+
+A `SecureChannel` between two key holders can be established for symmetric encryption after a successful asymmetric handshake.
 
 ## Installation
 
-To install `EP2Key` using `npm`, run:
+```bash
+npm i @ep2/key
+```
+
+## Usage
+
+```typescript
+import {EP2Key} from '@ep2/key';
+
+
+const key1 = await EP2Key.create(); //seed is securely generated
+console.log(key1.id); // prints out: "4614e5446e57bce4432a92b9be4c5884d3ec8d82a97367abe4995d5812b7aa2e"
+
+const key2 = await EP2Key.create('A *strong* seed'); // or UInt8Array(128)
+
+const encrypted = AsymmetricallyEncryptedMessage<string> = key1.encrypt(key2.id, "Hello, World!")
+
+const message:string = key2.decrypt(key1.id, encrypted)
+console.log(message); // prints out: "Hello, World!"
+
+
+```
+
+## Installation
+
+To install `EP2Key` in your project using `npm`, run:
 
 ```bash
 npm install @ep2/key
+```
+
+Or install globally:
+
+```bash
+npm install @ep2/key -g
+```
+
+Run `ep2key` from the command line to generate a new id, seed, private and public signing and encryption keys:
+
+``` bash
+boss@boss-XPS-13-9360:~/Develop/ep2$ ep2key
+{"id":"4614e5446e57bce4432a92b9be4c5884d3ec8d82a97367abe4995d5812b7aa2e","seed":[170,75,48,65,76,82,225,136,233,60,124,14,39,162,120,230,65,143,161,177,4,69,12,151,97,158,167,72,24,147,63,217],"signKeyPair":{"publicKey":[106,1,26,108,179,156,245,28,154,214,250,33,211,131,224,58,200,172,232,55,235,234,83,213,239,189,72,201,170,218,15,129],"privateKey":[170,75,48,65,76,82,225,136,233,60,124,14,39,162,120,230,65,143,161,177,4,69,12,151,97,158,167,72,24,147,63,217,106,1,26,108,179,156,245,28,154,214,250,33,211,131,224,58,200,172,232,55,235,234,83,213,239,189,72,201,170,218,15,129],"keyType":"ed25519"},"boxKeyPair":{"publicKey":[70,20,229,68,110,87,188,228,67,42,146,185,190,76,88,132,211,236,141,130,169,115,103,171,228,153,93,88,18,183,170,46],"privateKey":[164,250,29,48,138,203,53,201,144,240,107,99,54,64,108,86,30,96,206,29,15,69,125,126,177,63,182,47,253,194,188,249],"keyType":"x25519"}}
+
 ```
 
 To use the package, import it in your TypeScript file as follows:
@@ -48,7 +93,7 @@ Note that deriving the seed value from a string password using `crypto_genericha
 
 ## Peer ID
 
-The `peerId` property of the `EP2Key` is a unique identifier used to identify peers in the network.
+The `peerId` property of the `EP2Key` is a unique identifier used to identify communicating endpoints in the network.
 
 ```typescript
 const peerId = ep2Key.peerId;

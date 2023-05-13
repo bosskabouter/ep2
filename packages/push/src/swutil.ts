@@ -1,4 +1,4 @@
-import { EP2Key, SymmetricallyEncryptedMessage } from ".";
+import EP2Key, { EP2Cloaked } from "@ep2/key";
 
 interface PeriodicSyncManager {
   register: (tag: string, options?: { minInterval: number }) => Promise<void>;
@@ -111,7 +111,7 @@ export function EP2PushServiceWorker(
   }
 
   function handlePush(pushEvent: PushEvent): void {
-    if (key?.peerId === undefined) {
+    if (key?.id === undefined) {
       pushEvent.waitUntil(
         Promise.reject("No key yet to handle Secure Push Event")
       );
@@ -122,9 +122,10 @@ export function EP2PushServiceWorker(
       console.warn("No push data available");
       return;
     }
-    let relayedMessage: SymmetricallyEncryptedMessage<NotificationOptions>;
+    let relayedMessage: EP2Cloaked<NotificationOptions>;
     try {
-      relayedMessage = JSON.parse(payload);
+      relayedMessage =
+        EP2Cloaked.fromJSON<EP2Cloaked<NotificationOptions>>(payload);
     } catch (error) {
       console.warn("Invalid PushRequest", error);
       return;
@@ -132,9 +133,10 @@ export function EP2PushServiceWorker(
 
     let options: NotificationOptions;
     try {
-      options = key.decryptSymmetrically(relayedMessage);
+      options = relayedMessage.decrypt(key);
+      console.debug("received push from: " + relayedMessage.sender);
     } catch (error) {
-      //TODO: wait until key is resolved?
+      //wait until key is resolved
       pushEvent.waitUntil(
         Promise.reject("Unable decrypting PushRequest" + error)
       );

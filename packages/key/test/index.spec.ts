@@ -1,362 +1,320 @@
-import {
-  type AsymmetricallyEncryptedMessage,
-  SecureChannel,
-  EP2Key,
-  type EncryptedHandshake,
-  SymmetricallyEncryptedMessage,
-  generateRandomKey,
+import EP2Key, {
+  EP2Anonymized,
+  EP2Cloaked,
+  EP2Sealed,
+  EP2Encrypted,
+  EP2SecureChannel,
 } from "../src";
+import sodium from "libsodium-wrappers";
+// A test object to encrypt and decrypt
+const obj = {
+  name: "Alice",
+  age: 30,
+  birthday: new Date().toJSON(),
+  message: "Hello, World! ".repeat(300),
+};
+describe("EP2Key", () => {
+  let key1: EP2Key;
+  let key2: EP2Key;
 
-import { EP2KeyKX } from "../src/kx-test";
+  let anonymized: EP2Anonymized<typeof obj>;
+  let sealed: EP2Sealed<typeof obj>;
+  let cloaked: EP2Cloaked<typeof obj>;
 
-import { jest } from "@jest/globals";
-
-describe("API in README.md", () => {
-  let keyA: EP2Key;
-  let keyB: EP2Key;
-
-  beforeAll(async () => {
-    keyA = await EP2Key.create();
-    keyB = await EP2Key.create("some strong seed");
-    expect(keyB.peerId).toContain("0ba1f4667d7cfc3e61a6fac75");
-  });
-  test("Encrypt between known public keys", () => {
-    const m = "Hi, you know me!";
-    const a2b: AsymmetricallyEncryptedMessage<string> = keyA.encrypt(
-      keyB.peerId,
-      m
-    );
-    expect(keyB.decrypt(keyA.peerId, a2b)).toBe(m);
-  });
-  test("Encrypt from unknown for known recipient", () => {
-    const m = { myObject: "Who am I?" };
-    const u4a = EP2Key.encrypt(keyA.peerId, m); // or  key2.encryptSymmetrically(key.peerId, msg)
-    expect(keyA.decryptSymmetrically(u4a)).toEqual(m);
-  });
-});
-
-describe("ToJSON FromJSON should revive useful key", () => {
-  let key: EP2Key;
-  let json: string;
-  beforeAll(async () => {
-    json = (key = await EP2Key.create()).toJSON();
-    expect(key).toBeDefined();
-    expect(json).toBeDefined();
-  });
-  test("should read json key", async () => {
-    const keyAgain = EP2Key.fromJson(json);
-    expect(keyAgain).toEqual(key);
-    expect(keyAgain.encrypt(key.peerId, "anything")).toBeDefined();
-  });
-});
-describe("EP2Key create", () => {
-  let peer1: EP2Key;
-  let peer2: EP2Key;
   beforeEach(async () => {
-    peer1 = await EP2Key.create();
-    peer2 = await EP2Key.create();
-    expect(peer1).toBeDefined();
-    expect(peer2).toBeDefined();
-    expect(peer1.peerId).toBeDefined();
-    expect(peer2.peerId).toBeDefined();
+    key1 = await EP2Key.create("some strong seed");
+    key2 = await EP2Key.create();
+
+    expect((anonymized = new EP2Anonymized(obj, key1, key2.id))).toBeDefined();
+    expect((sealed = key1.seal(obj, key2.id))).toBeDefined();
+    expect((cloaked = key1.cloak(obj, key2.id))).toBeDefined();
   });
 
-  describe("keys encrypts for himself", () => {
-    test("Symmetrically", async () => {
-      const key = await EP2Key.create();
-      const encrypted = key.encryptSymmetrically(key.peerId, "Hello World");
-      const msg = key.decryptSymmetrically(encrypted);
-      expect(msg).toBe("Hello World");
+  describe("SecureChannel", () => {
+    let secureChannel: EP2SecureChannel;
+
+    beforeAll(async () => {
+      // Generate a shared secret key for testing
+      //await sodium.ready;
+      await EP2Key.create();
     });
-    test("Asymmetrically", async () => {
-      const key = await EP2Key.create();
-      const encrypted = key.encrypt(key.peerId, "Hello World");
-      const msg = key.decrypt(key.peerId, encrypted);
-      expect(msg).toBe("Hello World");
+    beforeEach(() => {
+      // Create a new SecureChannel instance before each test
+      secureChannel = key1.initSecureChannel(key2.id);
     });
-  });
-
-  describe("EP2Key creation", () => {
-    test("should create equal keys from same seed string", async () => {
-      const aSeed = "JuStAsEeD&!*^#^";
-      const key = await EP2Key.create(aSeed);
-      expect(key).toBeDefined();
-      const peer2 = await EP2Key.create(aSeed);
-      expect(peer2).toBeDefined();
-      expect(key).toEqual(peer2);
-    });
-
-    test("should create different keys from different seed string", async () => {
-      const aSeed = "JuStAsEeD&!*^#^";
-      const key = await EP2Key.create(aSeed);
-      expect(key).toBeDefined();
-      const peer2 = await EP2Key.create(aSeed + aSeed);
-      expect(peer2).toBeDefined();
-      expect(key).not.toEqual(peer2);
-    });
-  });
-
-  describe("Handshake", () => {
-    test("should shake hands, encrypt and decrypt", async () => {
-      const { secureChannel: secureChannel12, handshake } =
-        peer1.initiateHandshake(peer2.peerId);
-      const secureChannel21 = peer2.receiveHandshake(peer1.peerId, handshake);
-
-      expect(secureChannel21).toBeDefined();
-      const encryptedMessage = secureChannel12.encrypt("Hello world!");
-      const decrypted = secureChannel21?.decrypt(encryptedMessage);
-
-      expect(decrypted).toBe("Hello world!");
-    });
-
-    test("initiates and receives a handshake for a same peer id", () => {
-      const { secureChannel, handshake } = peer1.initiateHandshake(
-        peer2.peerId
-      );
-      const secureChannel21 = peer2.receiveHandshake(peer1.peerId, handshake);
-      expect(secureChannel21).toBeDefined();
-      expect(secureChannel.sharedSecret).toEqual(secureChannel21?.sharedSecret);
-    });
-
-    test("throws an error for an invalid signature", () => {
-      const { handshake } = peer1.initiateHandshake(peer2.peerId);
-      const modifiedSignature = handshake.signature.slice(2);
-      handshake.signature = modifiedSignature;
-      expect(() => {
-        peer2.receiveHandshake(peer1.peerId, handshake);
-      }).toThrowError(/^[iI]nvalid signature/);
-    });
-    test("throws an error for an invalid nonce value", () => {
-      const { handshake } = peer1.initiateHandshake(peer2.peerId);
-      const modifiedNonce = handshake.message.slice(2);
-      handshake.message = modifiedNonce;
-      expect(() => {
-        peer2.receiveHandshake(peer1.peerId, handshake);
-      }).toThrowError("invalid input");
-    });
-    test("throws an error for an invalid peer id", async () => {
-      const { handshake } = peer1.initiateHandshake(peer2.peerId);
-      const modifiedId = (await EP2Key.create()).peerId;
-      expect(() => {
-        peer2.receiveHandshake(modifiedId, handshake);
-      }).toThrowError("incorrect key pair for the given ciphertext");
-    });
-  });
-
-  test("should encrypt/decrypt AsymmetricallyEncryptedMessage simple text", async () => {
-    const ciphered = peer1.encrypt(peer2.peerId, "Hello world!");
-    expect(ciphered).toBeDefined();
-    const decrypted = ciphered.decrypt(peer2, peer1.peerId);
-    expect(decrypted).toEqual("Hello world!");
-  });
-
-  test("generate random key (for bin)", async () => {
-    const consoleSpy = jest.spyOn(console, "log");
-    generateRandomKey();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
-  });
-  test("should encrypt/decrypt SymmetricallyEncryptedMessage object", async () => {
-    const obj = {
-      anything: "https://example.com/endpoint",
-      counts: {
-        even: "auth",
-      },
-    };
-    const ciphered = EP2Key.encrypt(peer2.peerId, obj);
-    expect(ciphered).toBeDefined();
-    const decrypted = peer2.decryptSymmetrically(ciphered);
-    expect(decrypted).toEqual(obj);
-  });
-
-  test("should encrypt for and from relay", async () => {
-    const aMessage = "Hello world!";
-    const relayMessage = EP2Key.encrypt(peer1.peerId, aMessage);
-    expect(relayMessage).toBeDefined();
-    const received = peer1.decryptSymmetrically(relayMessage);
-    expect(received).toEqual(aMessage);
-  });
-  test("should encrypt for and from relay long message", async () => {
-    const aMessage = "Hello world!".repeat(2522);
-    const relayMessage = EP2Key.encrypt(peer2.peerId, aMessage);
-    expect(relayMessage).toBeDefined();
-    const received = peer2.decryptSymmetrically(relayMessage);
-    expect(received).toEqual(aMessage);
-  });
-  test("should fail to decrypt with wrong public key", async () => {
-    const ciphered = peer1.encrypt(peer2.peerId, "Hello world!");
-    expect(ciphered).toBeDefined();
-    const wrongPublicKey = await EP2Key.create();
-    expect(() => peer2.decrypt(wrongPublicKey.peerId, ciphered)).toThrow("");
-  });
-
-  test("should fail to decrypt from invalid relay message", async () => {
-    expect(() =>
-      peer2.decryptSymmetrically<any>(
-        new SymmetricallyEncryptedMessage("1313123", "23232344", "232323232")
-      )
-    ).toThrow("");
-  });
-
-  test("should fail to decrypt from tampered relay message", async () => {
-    const aMessage = "Hello world!";
-    let relayMessage = EP2Key.encrypt(peer2.peerId, aMessage);
-    expect(relayMessage).toBeDefined();
-    // Tamper the cipher
-
-    relayMessage = new SymmetricallyEncryptedMessage(
-      relayMessage.nonceB64,
-      relayMessage.cipherB64,
-      relayMessage.cipherB64.substring(2)
-    );
-
-    expect(() => peer2.decryptSymmetrically(relayMessage)).toThrow("");
-  });
-
-  describe("AsymmetricallyEncryptedMessage over secure Channel", () => {
-    const message = "A message, Bla blah".repeat(100);
-    let initiated: {
-      secureChannel: SecureChannel;
-      handshake: EncryptedHandshake;
-    };
-    beforeEach(async () => {
-      initiated = peer1.initiateHandshake(peer2.peerId);
-      expect(initiated).toBeDefined();
-      expect(initiated.handshake).toBeDefined();
-      expect(initiated.secureChannel).toBeDefined();
-      expect(initiated.secureChannel.sharedSecret).toBeDefined();
-    });
-
-    test("should AsymmetricallyEncryptedMessage from message", async () => {
-      const encryptedMessage: AsymmetricallyEncryptedMessage<string> =
-        initiated.secureChannel.encrypt(message);
-      expect(encryptedMessage).toBeDefined();
-      expect(encryptedMessage).toBeDefined();
-      expect(encryptedMessage).not.toEqual(message);
-    });
-    describe("Decrypt EncryptedMessage", () => {
-      let encryptedMessage: AsymmetricallyEncryptedMessage<string>;
-      beforeEach(async () => {
-        encryptedMessage = initiated.secureChannel.encrypt(message);
-      });
-      test("should decryptMessage", async () => {
-        const decryptedMessage =
-          initiated.secureChannel.decrypt(encryptedMessage);
-        expect(decryptedMessage).toBeDefined();
-        expect(decryptedMessage).toEqual(message);
-      });
-
-      test("should reject: tampered shared secret", async () => {
-        // aSecureChannel.
-        // const secureChannel2 = new SecureChannel(
-        //   new Uint8Array(Array.from(
-        //     aSecureChannel.sharedSecret).reverse())
-        // )
-        // expect(secureChannel2.decryptMessage(encryptedMessage)).toThrow(/wrong secret key for the given ciphertext/)
+    describe("encrypt()", () => {
+      test("should encrypt an object and return a Uint8Array", () => {
+        const encrypted = secureChannel.encrypt(obj);
+        expect(typeof encrypted === "string").toBe(true);
       });
     });
-    describe("SecureChannel Handshake", () => {
-      let sender: EP2Key;
-      let receiver: EP2Key;
 
-      let initiated: {
-        secureChannel: SecureChannel;
-        handshake: EncryptedHandshake;
-      };
-      beforeEach(async () => {
-        sender = await EP2Key.create();
-        receiver = await EP2Key.create();
-        expect(sender).toBeDefined();
-        expect(receiver).toBeDefined();
-        initiated = sender.initiateHandshake(receiver.peerId);
-        expect(initiated).toBeDefined();
-        expect(sender).toBeDefined();
+    describe("decrypt()", () => {
+      test("should decrypt an encrypted message and return the original object", () => {
+        const encrypted = secureChannel.encrypt(obj);
+        const decrypted = secureChannel.decrypt(encrypted);
+        expect(decrypted).toEqual(obj);
+      });
 
-        const sharedSecret = receiver.receiveHandshake(
-          sender.peerId,
-          initiated.handshake
+      test("should throw an error if the encrypted message has a different tag", () => {
+        const obj = { foo: "bar" };
+        const encrypted = secureChannel.encrypt(obj);
+        // Change the tag to a different value
+
+        expect(() => secureChannel.decrypt("blah" + encrypted)).toThrow(
+          "incorrect secret key for the given ciphertext"
         );
-        expect(sharedSecret).toBeDefined();
       });
-      test("should share Secret", () => {
-        const sharedSecret = receiver.receiveHandshake(
-          sender.peerId,
-          initiated.handshake
-        )?.sharedSecret;
+    });
+  });
 
-        expect(sharedSecret).toEqual(initiated.secureChannel.sharedSecret);
-        const decrypted = new SecureChannel(
-          initiated.secureChannel.sharedSecret
-        ).decrypt(initiated.secureChannel.encrypt("Hello"));
-        expect(decrypted).toEqual("Hello");
+  test("should cloak/uncloak, seal/unseal, anonymize/reveal", () => {
+    const unsealed = sealed.decrypt(key2);
+    const uncloaked = cloaked.decrypt(key2);
+    const verified = anonymized.decrypt(key2, key1.id);
+
+    expect(uncloaked).toEqual(expect.objectContaining(obj));
+    expect(uncloaked.sender).toEqual(key1.id);
+    expect(unsealed).toEqual(obj);
+    expect(verified).toEqual(obj);
+  });
+
+  describe("Anonymized", () => {
+    it("Should Anonymize", () => {
+      const encryptedMessage = key1.anonymize(obj, key2.id);
+      expect(encryptedMessage).toBeDefined();
+      expect(encryptedMessage).not.toContain(key1.id);
+      expect(encryptedMessage).not.toContain(key1.keySet.boxKeyPair.publicKey);
+      expect(encryptedMessage).not.toContain(key1.keySet.signKeyPair.publicKey);
+      //just to be sure
+      expect(encryptedMessage.toString()).not.toContain("private");
+    });
+
+    describe("Should reveal after decrypting", () => {
+      it("Should encrypt with different nonce", () => {
+        const anonymized2 = new EP2Anonymized(obj, key1, key2.id);
+        expect(anonymized2).not.toEqual(anonymized);
+        expect(anonymized2.espsk).not.toEqual(anonymized.espsk);
+        expect(anonymized2.cipher).not.toEqual(anonymized.cipher);
       });
 
-      describe("Should Reject:", () => {
-        let fakeKey: EP2Key;
-        let fakeHandshake: {
-          secureChannel: SecureChannel;
-          handshake: EncryptedHandshake;
-        };
+      it("Should Decrypt", () => {
+        const decrypted = anonymized.decrypt(key2, key1.id);
+        expect(decrypted).toBeDefined();
+        expect(decrypted).toEqual(obj);
+      });
 
-        beforeEach(async () => {
-          fakeKey = await EP2Key.create();
-          fakeHandshake = fakeKey.initiateHandshake(receiver.peerId);
+      it("Should Not Decrypt > tampered key", () => {
+        expect(() => anonymized.decrypt(key2, key2.id)).toThrow(
+          "incorrect key pair for the given ciphertext"
+        );
+      });
+
+      test("Anonymized message with tampered signature should throw error on decrypt", () => {
+        const anonymized2 = new EP2Anonymized(obj, key1, key2.id);
+
+        anonymized2.cipher.set(new Uint8Array([1, 2, 3]), 0);
+        expect(() => anonymized2.decrypt(key2, key1.id)).toThrow(
+          "Failed to verify message signature"
+        );
+      });
+
+      describe("Serialization", () => {
+        it("Should serialize", () => {
+          expect(anonymized.toJSON()).toBeDefined();
+        });
+        it("Deserialize", () => {
+          let deserialized: EP2Encrypted<typeof obj>;
+          expect(
+            (deserialized = EP2Anonymized.fromJSON(anonymized.toJSON()))
+          ).toBeDefined();
+          expect(deserialized).toEqual(anonymized);
+        });
+        it("Decrypt after deserialize", () => {
+          const deserialized = EP2Anonymized.fromJSON(
+            anonymized.toJSON()
+          ) as EP2Anonymized<typeof obj>;
+          let decrypted: typeof obj;
+
+          expect(
+            (decrypted = deserialized.decrypt(key2, key1.id))
+          ).toBeDefined();
+          expect(decrypted).toEqual(obj);
+        });
+      });
+    });
+
+    describe("Sealed", () => {
+      describe("[SealedMessage] - unsealing", () => {
+        let sealed: EP2Sealed<typeof obj>;
+        beforeEach(() => {
+          sealed = new EP2Sealed(obj, key2.id);
         });
 
-        test("tampered Signature", () => {
-          initiated.handshake.signature = fakeHandshake.handshake.signature;
-          void expect(async () =>
-            receiver.receiveHandshake(sender.peerId, initiated.handshake)
-          ).rejects.toThrow(/Invalid signature/);
-        });
-        test("tampered public SignKey", async () => {
-          initiated.handshake.publicSignKey =
-            fakeHandshake.handshake.publicSignKey;
-          await expect(async () =>
-            receiver.receiveHandshake(sender.peerId, initiated.handshake)
-          ).rejects.toThrow(/Invalid signature/);
-        });
-        test("tampered messageBytes", async () => {
-          initiated.handshake.message = fakeHandshake.handshake.message;
-          await expect(async () =>
-            receiver.receiveHandshake(sender.peerId, initiated.handshake)
-          ).rejects.toThrow(/Invalid signature/);
+        it("Should decrypt", () => {
+          const unsealed = sealed.decrypt(key2);
+          expect(unsealed).toEqual(obj);
         });
 
-        test("tampered public peerId", async () => {
-          const fakePubId = fakeKey.peerId;
-          await expect(async () =>
-            receiver.receiveHandshake(fakePubId, initiated.handshake)
-          ).rejects.toThrow(/incorrect key pair for the given ciphertext/);
+        it("Should create different sealed messages for same payload", () => {
+          const sealed2 = new EP2Sealed(obj, key2.id);
+
+          expect(sealed2).not.toEqual(sealed);
         });
 
-        test("tampered everything", async () => {
-          await expect(async () =>
-            receiver.receiveHandshake(sender.peerId, fakeHandshake.handshake)
-          ).rejects.toThrow(/incorrect key pair for the given ciphertext/);
+        it("Should not contain private", () => {
+          expect(sealed.toString()).not.toContain("private");
+        });
+      });
+    });
+
+    describe("Cloaked", () => {
+      let cloaked2 = () =>
+        new EP2Cloaked(
+          obj,
+          key1.keySet.boxKeyPair.publicKey,
+
+          key2.keySet.boxKeyPair.publicKey
+        );
+
+      it("cloaks with equal content should differ", () => {
+        expect(cloaked2()).not.toEqual(cloaked2());
+      });
+
+      it("cloaks with equal should differ encrypted public key", () => {
+        expect(cloaked2().encryptedSenderPublicBoxKey).not.toEqual(
+          cloaked2().encryptedSenderPublicBoxKey
+        );
+      });
+
+      it("Should uncloak", () => {
+        expect(() => cloaked2().decrypt(key2)).not.toThrow();
+      });
+
+      describe("[Uncloaked] Test case", () => {
+        let uncloak = () => cloaked2().decrypt(key2);
+
+        it("Should have same payload", () => {
+          const uncloaked = uncloak();
+          expect(uncloaked.sender).toEqual(key1.id);
+        });
+        it("Should identify sender after uncloak", () => {
+          const uncloaked = uncloak();
+          expect(uncloaked.sender).toEqual(key1.id);
+        });
+        it("Should deserialize and  uncloak", () => {
+          let serialized = cloaked2().toJSON();
+          expect(serialized).toBeDefined();
+          let deserialized = EP2Cloaked.fromJSON(serialized) as EP2Cloaked<
+            typeof obj
+          >;
+          expect(deserialized).toBeDefined();
+          let uncloak: typeof obj;
+          expect((uncloak = deserialized.decrypt(key2))).toBeDefined();
+          expect(deserialized.sender).toEqual(key1.id);
+          expect(uncloak).toBeDefined();
         });
       });
     });
   });
-});
 
-describe("EP2KeyKX", () => {
-  test("should first", async () => {
-    const key1 = await EP2KeyKX.create();
-    const key2 = await EP2KeyKX.create();
-    const msg = "Hoi"; // { say: "Hello World" }
-    expect(key1).toBeDefined();
-    // const asymmetrically = key1.encrypt(key2.peerId, msg)
-    // expect(asymmetrically.decrypt(key2, key1.peerId)).toBe(msg)
-    // const symmetrically = key1.encryptSymmetrically(key2.peerId, msg)
-    // expect(symmetrically.decrypt(key2)).toBe(msg)
+  it("should generate a new EP2Key instance", async () => {
+    const keyPair = await EP2Key.create();
 
-    const initiatedHandshake = key1.initiateHandshake2(key2.peerId);
-    const secureChannel = key2.receiveHandshake2(key1.peerId);
-    const cipher: AsymmetricallyEncryptedMessage<any> =
-      initiatedHandshake.secureChannel.encrypt(msg);
+    expect(keyPair.seed).toBeInstanceOf(Uint8Array);
+    expect(keyPair.keySet.signKeyPair.privateKey).toBeInstanceOf(Uint8Array);
+    expect(keyPair.keySet.signKeyPair.publicKey).toBeInstanceOf(Uint8Array);
+    expect(keyPair.keySet.boxKeyPair.privateKey).toBeInstanceOf(Uint8Array);
+    expect(keyPair.keySet.boxKeyPair.publicKey).toBeInstanceOf(Uint8Array);
+  });
 
-    expect(secureChannel.decrypt(cipher)).toEqual(msg);
+  it("should generate a new EP2Key instance with the given seed", async () => {
+    const seed = sodium.randombytes_buf(sodium.crypto_sign_SEEDBYTES);
+    const keyPair = await EP2Key.create(seed);
+
+    expect(keyPair.seed).toBe(seed);
+  });
+
+  it("should serialize an EP2Key instance to a JSON string", async () => {
+    const keyPair = await EP2Key.create();
+    const json = keyPair.toJSON();
+    const parsed = JSON.parse(json);
+
+    expect(parsed).toHaveProperty("id");
+    expect(parsed).toHaveProperty("seed");
+    expect(parsed).toHaveProperty("signKeyPair");
+    expect(parsed).toHaveProperty("boxKeyPair");
+
+    expect(parsed.seed).toHaveLength(sodium.crypto_sign_SEEDBYTES);
+    expect(parsed.signKeyPair.publicKey).toHaveLength(
+      sodium.crypto_sign_PUBLICKEYBYTES
+    );
+    expect(parsed.signKeyPair.privateKey).toHaveLength(
+      sodium.crypto_sign_SECRETKEYBYTES
+    );
+    expect(parsed.boxKeyPair.publicKey).toHaveLength(
+      sodium.crypto_box_PUBLICKEYBYTES
+    );
+    expect(parsed.boxKeyPair.privateKey).toHaveLength(
+      sodium.crypto_box_SECRETKEYBYTES
+    );
+  });
+
+  it("should deserialize an EP2Key instance from a JSON string", async () => {
+    const keyPair1 = await EP2Key.create();
+    const json = keyPair1.toJSON();
+    const keyPair2 = EP2Key.fromJson(json);
+
+    expect(keyPair2.seed).toEqual(keyPair1.seed);
+    expect(keyPair2.keySet.signKeyPair.publicKey).toEqual(
+      keyPair1.keySet.signKeyPair.publicKey
+    );
+  });
+
+  // it("Should Anonymize", () => {
+  //   const anonymized = key1.anonymize(obj, key2.id);
+  //   expect(anonymized).toBeDefined();
+  //   const dec = anonymized.decrypt(key2, key1.id);
+  //   expect(dec).toEqual(obj);
+  // });
+
+  // it("Should cloak", () => {
+  //   const cloaked = key1.cloak(obj, key2.id);
+  //   expect(cloaked).toBeDefined();
+  //   const dec = cloaked.decrypt(key2);
+  //   expect(dec).toEqual(expect.objectContaining(obj));
+  //   expect(dec.sender).toEqual(key1.id);
+  // });
+  // it("Should Seal", () => {
+  //   const sealed = key1.seal(obj, key2.id);
+  //   expect(sealed).toBeDefined();
+  //   const dec = sealed.decrypt(key2);
+  //   expect(dec).toEqual(obj);
+  // });
+
+  test("should create equal keys from same seed string", async () => {
+    const aSeed = "JuStAsEeD&!*^#^";
+    const key = await EP2Key.create(aSeed);
+    expect(key).toBeDefined();
+    const peer2 = await EP2Key.create(aSeed);
+    expect(peer2).toBeDefined();
+    expect(key).toEqual(peer2);
+
+    // generateRandomKey((key) => expect(key).toBeDefined());
+  });
+
+  test("should create different keys from different seed string", async () => {
+    const aSeed = "JuStAsEeD&!*^#^";
+    const key = await EP2Key.create(aSeed);
+    expect(key).toBeDefined();
+    const peer2 = await EP2Key.create(aSeed + aSeed);
+    expect(peer2).toBeDefined();
+    expect(key).not.toEqual(peer2);
+  });
+
+  test("Invalid peerId throws error", () => {
+    expect(() => EP2Key.convertId2PublicKey("invalid key")).toThrow(
+      "Invalid peerId: invalid key. Error: Error: incomplete input. Did you create a key first? !sodium.ready"
+    );
   });
 });

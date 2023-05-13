@@ -7,14 +7,13 @@
   "types": "out/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build --force",
     "dev": "tsc --watch",
     "clean": "rm -rf ./out",
     "test": "jest",
     "coverage": "jest --coverage"
   },
-  "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@ep2/key": "^1.0.0",
     "axios": "^1.3.5",

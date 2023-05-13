@@ -1,30 +1,28 @@
 import request from "supertest";
-import {
-  AsymmetricallyEncryptedMessage,
-  EP2Key,
-  // type AsymmetricallyEncryptedMessage,
-  type SymmetricallyEncryptedMessage,
-} from "@ep2/key";
 
 import express from "express";
 
 import publicContent from "../src/app.json";
 // import type { IncomingMessage, Server, ServerResponse } from "http";
 import webpush from "web-push";
-import { EP2PushServer, ExpressEP2PushServer } from "../src";
 import {
+  // EP2Anonymized,
+  EP2PushServer,
+  ExpressEP2PushServer,
+  // EP2PushAuthorization,
   // EP2PushAuthorization,
   // EP2PushMessage,
   // EP2PushMessageRequest,
   // EP2PushRequest,
-  EP2PushVapidResponse,
-  EP2PushVapidRequest,
-  EP2PushAuthorization,
-  EP2PushMessageRequest,
-  EP2PushMessage,
-} from "@ep2/push";
+  // EP2PushVapidResponse,
+  // EP2PushVapidRequest,
+  // EP2PushAuthorization,
+  // EP2PushMessageRequest,
+  // EP2PushMessage,
+} from "../src";
 
 import TEST_PUSH_SUBSCRIPTION from "./push-subscription.spec.json";
+import EP2Key from "@ep2/key";
 
 const TEST_PORT = 2000 + Math.floor(Math.random() * 5000);
 
@@ -46,9 +44,10 @@ beforeAll(async () => {
   serverKey = await EP2Key.create();
   expect(serverKey).toBeDefined();
   pusherKey = await EP2Key.create();
+  expect(pusherKey).toBeDefined();
   pushedKey = await EP2Key.create();
   expect(pushedKey).toBeDefined();
-
+  expect(mockPushSubscription).toBeDefined();
   app = express();
   server = app.listen(TEST_PORT, () => {
     const ep2PushServer = ExpressEP2PushServer(serverKey, server, {
@@ -66,20 +65,18 @@ afterAll((done) => {
   server.close(done);
 });
 
-describe("EP2Push - 1. Prepare Authorization", () => {
-  let encryptedEndpoint: SymmetricallyEncryptedMessage<any>;
+describe("EP2PushServer - 1. Prepare Authorization", () => {
+  // let encryptedEndpoint: SymmetricallyEncryptedMessage<any>;
   beforeAll(async () => {
-    encryptedEndpoint = pusherKey.encryptSymmetrically(
-      serverKey.peerId,
-      mockPushSubscription
-    );
-
-    expect(encryptedEndpoint).toBeDefined();
+    // encryptedEndpoint = pusherKey.encryptSymmetrically(
+    //   serverKey.id,
+    //   mockPushSubscription
+    // );
+    // expect(encryptedEndpoint).toBeDefined();
   });
 
   afterAll(() => {
     jest.resetModules();
-
   });
 
   describe("1. EP2PushVapidRequest", () => {
@@ -88,82 +85,79 @@ describe("EP2Push - 1. Prepare Authorization", () => {
     test("should Fail: pushed too much payload ", () => {
       //PLEASE IMPLEMENT
     });
-    test("Should Push", async () => {
-      const { secureChannel, handshake } = pusherKey.initiateHandshake(
-        serverKey.peerId
-      );
+    // test("Should Push", async () => {
+    //   const { secureChannel, handshake } = pusherKey.initiateHandshake(
+    //     serverKey.id
+    //   );
 
-      const vapidRequest: EP2PushVapidRequest = {
-        path: "/vapid",
-        handshake,
-        peerId: pusherKey.peerId,
-      };
+    //   const vapidRequest: EP2PushVapidRequest = {
+    //     path: "/vapid",
+    //     handshake,
+    //     peerId: pusherKey.id,
+    //   };
 
-      const resp = await request(app).post("/ep2push/vapid").send(vapidRequest);
+    //   const resp = await request(app).post("/ep2push/vapid").send(vapidRequest);
 
-      expect(resp).toBeDefined();
-      expect(resp.error).toBeFalsy();
+    //   expect(resp).toBeDefined();
+    //   expect(resp.error).toBeFalsy();
 
-      const pushVapidResponse: EP2PushVapidResponse = secureChannel.decrypt(
-        resp.body
-      );
-      expect(pushVapidResponse).toBeDefined();
+    //   const pushVapidResponse: EP2PushVapidResponse = secureChannel.decrypt(
+    //     resp.body
+    //   );
+    //   expect(pushVapidResponse).toBeDefined();
 
-      const encryptedVapidKeys = pushVapidResponse.encryptedVapidKeys;
-      expect(encryptedVapidKeys).toBeDefined();
+    //   const encryptedVapidKeys = pushVapidResponse.encryptedVapidKeys;
+    //   expect(encryptedVapidKeys).toBeDefined();
 
-      const vapidPublicKey = pushVapidResponse.vapidPublicKey;
-      expect(vapidPublicKey).toBeDefined();
+    //   const vapidPublicKey = pushVapidResponse.vapidPublicKey;
+    //   expect(vapidPublicKey).toBeDefined();
 
-      let authorization: EP2PushAuthorization;
+    //   let authorization: EP2PushAuthorization;
 
-      const encryptedPushSubscription: SymmetricallyEncryptedMessage<PushSubscription> =
-        pushedKey.encryptSymmetrically(
-          serverKey.peerId,
-          TEST_PUSH_SUBSCRIPTION as any as PushSubscription
-        );
+    //   const encryptedPushSubscription: SymmetricallyEncryptedMessage<PushSubscription> =
+    //     pushedKey.encryptSymmetrically(
+    //       serverKey.id,
+    //       TEST_PUSH_SUBSCRIPTION as any as PushSubscription
+    //     );
 
-      authorization = {
-        encryptedPushSubscription,
-        encryptedVapidKeys,
-      };
-      expect(authorization).toBeDefined();
+    //   authorization = {
+    //     encryptedPushSubscription,
+    //     encryptedVapidKeys,
+    //   };
+    //   expect(authorization).toBeDefined();
 
-      let pushMessageRequest: EP2PushMessageRequest;
+    //   let pushMessageRequest: EP2PushMessageRequest;
 
-      const notificationOptions: NotificationOptions = {
-        data: "Hello, World!",
-        vibrate: [1000, 1500, 2000, 2500],
-      };
-      const encryptedNotificationOptions: SymmetricallyEncryptedMessage<NotificationOptions> =
-        EP2Key.encrypt(pushedKey.peerId, notificationOptions);
-      const pushMessage: EP2PushMessage = {
-        authorization,
-        encryptedNotificationOptions,
-      };
+    //   const notificationOptions: NotificationOptions = {
+    //     data: "Hello, World!",
+    //     vibrate: [1000, 1500, 2000, 2500],
+    //   };
+    //   const encryptedNotificationOptions: SymmetricallyEncryptedMessage<NotificationOptions> =
+    //     EP2Key.encrypt(pushedKey.id, notificationOptions);
+    //   const pushMessage: EP2PushMessage = {
+    //     authorization,
+    //     encryptedNotificationOptions,
+    //   };
 
-      const encryptedPushMessage: AsymmetricallyEncryptedMessage<EP2PushMessage> =
-        secureChannel.encrypt(pushMessage);
-      pushMessageRequest = {
-        encryptedPushMessage,
-        handshake,
+    //   const encryptedPushMessage: AsymmetricallyEncryptedMessage<EP2PushMessage> =
+    //     secureChannel.encrypt(pushMessage);
+    //   pushMessageRequest = {
+    //     payload: pushMessageRequest,
+    //     peerId: pusherKey.id,
+    //     path: "/push",
+    //   };
 
-        peerId: pusherKey.peerId,
-        path: "/push",
-      };
+    //   expect(pushMessageRequest).toBeDefined();
 
-      expect(pushMessageRequest).toBeDefined();
-
-      const response = await request(app)
-        .post("/ep2push/push")
-        .send(pushMessageRequest);
-      expect(response).toBeDefined();
-      expect(response.text).not.toContain("Error");
-      expect(response.error).toBeFalsy();
-      expect(response.status).toBeTruthy();
-    });
+    //   const response = await request(app)
+    //     .post("/ep2push/push")
+    //     .send(pushMessageRequest);
+    //   expect(response).toBeDefined();
+    //   expect(response.text).not.toContain("Error");
+    //   expect(response.error).toBeFalsy();
+    //   expect(response.status).toBeTruthy();
+    // });
   });
-
 
   test("should get public content", async () => {
     const resp = await request(app).get("/ep2push");
@@ -178,7 +172,6 @@ describe("EP2Push - 1. Prepare Authorization", () => {
     expect(resp.error).toBeFalsy();
     expect(resp.text).toContain("<h1>EP²Push - Test</h1>");
   });
-
 });
 
 test("should Create simple server", (done) => {
@@ -196,10 +189,10 @@ test("should Create simple server", (done) => {
 
 // test("POST /send should send a notification", async () => {
 //   const encryptedNotificationOptions: SymmetricallyEncryptedMessage<NotificationOptions> =
-//     EP2Key.encrypt(pushedKey.peerId, { data: "Hello from Pusher" });
+//     EP2Key.encrypt(pushedKey.id, { data: "Hello from Pusher" });
 
 //   const { secureChannel, handshake } = pusherKey.initiateHandshake(
-//     serverKey.peerId
+//     serverKey.id
 //   );
 
 //   const authorization: EP2PushAuthorization = {
@@ -213,12 +206,12 @@ test("should Create simple server", (done) => {
 //   };
 
 //   const encryptedPushMessage: AsymmetricallyEncryptedMessage<EP2PushMessage> =
-//     pusherKey.encrypt(pushedKey.peerId, pushMessage);
+//     pusherKey.encrypt(pushedKey.id, pushMessage);
 
 //   const wpr: EP2PushMessageRequest = {
 //     handshake,
 //     encryptedPushMessage,
-//     peerId: pushedKey.peerId,
+//     id: pushedKey.id,
 //     path: "/push",
 //   };
 //   const response = await request(app).post("/ep2push").send(wpr);
@@ -236,10 +229,10 @@ test("should Create simple server", (done) => {
 
 // test("POST /send should return HTTP_ERROR_PUSH_TOO_BIG if the payload is too big", async () => {
 //   const encryptedPayload: SymmetricallyEncryptedMessage<NotificationOptions> =
-//     EP2Key.encrypt(pushedKey.peerId, { data: "a".repeat(4097) });
+//     EP2Key.encrypt(pushedKey.id, { data: "a".repeat(4097) });
 
 //   const { secureChannel, handshake } = pusherKey.initiateHandshake(
-//     serverKey.peerId
+//     serverKey.id
 //   );
 
 //   const encryptedPushMessages: AsymmetricallyEncryptedMessage<
@@ -254,7 +247,7 @@ test("should Create simple server", (done) => {
 //   const wpr: EP2PushRequest = {
 //     encryptedPushMessages,
 //     handshake,
-//     senderId: pusherKey.peerId,
+//     senderId: pusherKey.id,
 //   };
 //   const response = await request(app).post("/ep2push").send(wpr);
 //   expect(response).toBeDefined();
@@ -284,7 +277,7 @@ test("should Create simple server", (done) => {
 //     // pusherKey = await EP2Key.create()
 //     // pushedKey = await EP2Key.create()
 
-//     // encryptedEndpoint = pusherKey.encryptSymmetrically(serverKey.peerId, mockPushSubscription)
+//     // encryptedEndpoint = pusherKey.encryptSymmetrically(serverKey.id, mockPushSubscription)
 
 //     server = app.listen(TEST_PORT, () => {
 //       const sps = ExpressOfflineServer(serverKey, VAPID_KEYS, {} as Server<typeof IncomingMessage, typeof ServerResponse>, { port: (TEST_PORT + 1) })

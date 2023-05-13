@@ -17,7 +17,7 @@ describe("BIP Key", () => {
     const k2 = await EP2KeyBIP.create(VALID_MNEMONIC);
     testValidKey(k1);
     expect(k1).toEqual(k2);
-    expect(k1.peerId).toEqual(k2.peerId);
+    expect(k1.id).toEqual(k2.id);
     expect(k1.masterKey).toEqual(k2.masterKey);
     expect(k1.keySet.signKeyPair).toEqual(k2.keySet.signKeyPair);
   });
@@ -34,7 +34,7 @@ function testValidKey(k: EP2KeyBIP | null): void {
   else {
     expect(k.mnemonic).toBeDefined();
     expect(k.mnemonic.split(" ").length).toBe(12);
-    expect(k.peerId).toBeDefined();
+    expect(k.id).toBeDefined();
     expect(k.keySet.signKeyPair).toBeDefined();
     expect(k.masterKey).toBeDefined();
   }

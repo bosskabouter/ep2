@@ -10,7 +10,7 @@
       "@ep2/pushserver/*": ["packages/pushserver/*"]
     },
     "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
-    "target": "ES5",
+    "target": "ES2015",
     "composite": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",

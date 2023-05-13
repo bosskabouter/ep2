@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { AsymmetricallyEncryptedMessage, EP2Key } from "@ep2/key";
+import EP2Key, { EP2Sealed } from "@ep2/key";
 import { addServiceWorkerHandle as addServiceWorkerHandle } from "./swutil";
 import {
   EP2PushConfig,
@@ -52,7 +52,7 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
 
     private readonly ep2key: EP2Key,
 
-    private readonly config: EP2PushConfig,
+    // private readonly config: EP2PushConfig,
     private readonly postURI: string
   ) {
     super();
@@ -100,14 +100,13 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
 
     updateEP2ServiceWorker(ep2key);
 
-    const encryptedPushSubscription = EP2Key.encrypt(config.ep2PublicKey, subs);
-
+    const encryptedPushSubscription = new EP2Sealed(subs, config.ep2PublicKey);
     const sharedSubscription: EP2PushAuthorization = {
-      encryptedPushSubscription,
-      encryptedVapidKeys: vapidSubscription.encryptedVapidKeys,
+      sealedPushSubscription: encryptedPushSubscription,
+      anonymizedVapidKeys: vapidSubscription.encryptedVapidKeys,
     };
 
-    return new this(sharedSubscription, ep2key, config, postURI);
+    return new this(sharedSubscription, ep2key, postURI);
   }
 
   /**
@@ -119,15 +118,20 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
     serverPublicKey: string,
     postURI: string
   ): Promise<EP2PushVapidResponse> {
-    const initiateHandshake = ep2key.initiateHandshake(serverPublicKey);
+    const seal = ep2key.anonymize(serverPublicKey, serverPublicKey);
     const request: EP2PushVapidRequest = {
-      handshake: initiateHandshake.handshake,
-      peerId: ep2key.peerId,
+      peerId: ep2key.id,
       path: "/vapid",
+      payload: seal,
     };
-    const response: AsymmetricallyEncryptedMessage<EP2PushVapidResponse> =
-      await axios.post(postURI + "/vapid", request);
-    return initiateHandshake.secureChannel.decrypt(response);
+    const response = await axios.post(postURI + "/vapid", request);
+
+    if (response.status > 200)
+      throw Error("No VAPID Keys from EP2PushServer: " + response.statusText);
+
+    const vapidR: EP2PushVapidResponse = response.data as EP2PushVapidResponse;
+
+    return vapidR;
   }
 
   /**
@@ -142,8 +146,7 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
       await navigator.serviceWorker?.getRegistration();
 
     if (serviceWorkerRegistration === undefined) {
-      console.warn("EP2PUSH: No serviceWorker Registration");
-      return;
+      throw Error("EP2PUSH: No serviceWorker Registration");
     }
 
     const subs = await serviceWorkerRegistration.pushManager.subscribe({
@@ -157,9 +160,9 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
     return subs;
   }
   /**
-   * Pushes `NotificationOptions` to the given destination EP2Push PeerID, using the `SymmetricallyEncryptedMessage<PushSubscription>` given by the receiver.
+   * Pushes `NotificationOptions` to the given destination EP2Push id, using the `SymmetricallyEncryptedMessage<PushSubscription>` given by the receiver.
    * @param notificationOptions
-   * @param peerId
+   * @param id
    * @param shareSubscription
    * @returns
    */
@@ -170,31 +173,22 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
     receiver: string,
     pushVapid: EP2PushAuthorization
   ): Promise<boolean> {
-    const { secureChannel, handshake } = this.ep2key.initiateHandshake(
-      this.config.ep2PublicKey
-    );
-    const encryptedNotificationOptions = this.ep2key.encryptSymmetrically(
-      receiver,
-      notificationOptions
+    const cloakedNotificationOptions = this.ep2key.cloak(
+      notificationOptions,
+      receiver
     );
     const pushMessage: EP2PushMessage = {
-      encryptedNotificationOptions,
-      pushVapid,
+      cno: cloakedNotificationOptions,
+      a: pushVapid,
     };
-    const encryptedPushMessage: AsymmetricallyEncryptedMessage<EP2PushMessage> =
-      secureChannel.encrypt(pushMessage);
-
-    const request: EP2PushMessageRequest = {
-      encryptedPushMessage,
-      handshake,
-      peerId: this.ep2key.peerId,
+    const encryptedPushMessage = this.ep2key.anonymize(pushMessage, receiver);
+    const pushMessageRequest: EP2PushMessageRequest = {
+      payload: encryptedPushMessage,
+      peerId: this.ep2key.id,
       path: "/push",
     };
 
-    const response = await axios.post(this.postURI, {
-      handshake,
-      webPushRequest: request,
-    });
+    const response = await axios.post(this.postURI, pushMessageRequest);
 
     return (
       response !== undefined && response !== null && response.status === 200

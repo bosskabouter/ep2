@@ -1,18 +1,19 @@
-// import axios from "axios";
+import axios from "axios";
 import {
   EP2Push,
-  // EP2PushMessage,
+  EP2PushMessage,
   // EP2PushConfig,
   // updateEP2ServiceWorker,
-  EP2Key,
-  // SymmetricallyEncryptedMessage,
-  // EP2PushAuthorization,
+  EP2PushVapidResponse,
+  EP2Sealed,
+  EP2PushAuthorization,
 } from "../src";
 // import { EP2PushServiceWorker, addServiceWorkerHandle } from "../src/swutil";
 
-// import TEST_VAPID_KEYS from "./vapid-keys.spec.json"2;
+import TEST_VAPID_KEYS from "./vapid-keys.spec.json";
+import EP2Key, { EP2Anonymized, EP2Cloaked } from "@ep2/key";
 
-// import TEST_PUSH_SUBSCRIPTION from "./push-subscription.spec.json";
+import TEST_PUSH_SUBSCRIPTION from "./push-subscription.spec.json";
 
 jest.mock("axios");
 
@@ -27,104 +28,118 @@ jest.mock("axios");
 //   })
 // );
 
-describe("EP2Push API", () => {
-  test("show case README.md", async () => {
-    const ep2key = await EP2Key.create();
+describe("VAPID request", () => {
+  let pusherKey: EP2Key;
+  let serverKey: EP2Key;
+  let pushedKey: EP2Key;
+  let encryptedVapidKeys: EP2Anonymized<{
+    privateKey: string;
+    publicKey: string;
+  }>;
+  // server response with encrypted vapid key pair + plain text vapid public key for user to subscribe `ServiceWorker.PushManager` to
+  let vapidResponse: EP2PushVapidResponse;
+  //encrypted response to client
+  let cloakedVapidResponse: EP2Cloaked<EP2PushVapidResponse>;
 
-    const ep2push = await EP2Push.register(ep2key);
-    const success = await ep2push?.pushText(
-      {
-        body: "Knock knock. Who is there?",
-        vibrate: [2000, 1000, 2000, 1000, 3000],
-      },
-      ep2key.peerId,
-      ep2push.sharedSubscription
+  beforeAll(async () => {
+    pusherKey = await EP2Key.create();
+
+    pushedKey = await EP2Key.create();
+    serverKey = await EP2Key.create();
+
+    //server encrypted vapid keys for itself
+    encryptedVapidKeys = serverKey.anonymize(
+      TEST_VAPID_KEYS.keys,
+      serverKey.id
     );
-    expect(success).toBeTruthy();
+    vapidResponse = {
+      encryptedVapidKeys,
+      vapidPublicKey: TEST_VAPID_KEYS.keys.publicKey,
+    };
+    cloakedVapidResponse = serverKey.cloak(vapidResponse, pushedKey.id);
+
+    (axios.post as jest.Mock).mockImplementation(
+      async () =>
+        await Promise.resolve({ status: 200, data: cloakedVapidResponse })
+    );
   });
+
+  describe("Push Request", () => {});
+  let pushMessage: EP2PushMessage;
+
+  const notificationOptions: NotificationOptions = {};
+
+  // let config: EP2PushConfig;
+
+  let a: EP2PushAuthorization;
+  let encryptedPushSubscription: EP2Sealed<PushSubscription>;
+
+  beforeAll(async () => {
+    // config = {
+    //   ep2PublicKey: serverKey.id,
+    //   port: 9001,
+    //   secure: false,
+    //   host: "testHost",
+    //   path: "testPath",
+    // };
+    pushedKey = await EP2Key.create();
+
+    encryptedPushSubscription = pushedKey.seal(
+      TEST_PUSH_SUBSCRIPTION as unknown as PushSubscription,
+      serverKey.id
+    );
+
+    a = {
+      sealedPushSubscription: encryptedPushSubscription,
+      anonymizedVapidKeys: vapidResponse.encryptedVapidKeys,
+    };
+    const cno = pusherKey.cloak(notificationOptions, pushedKey.id);
+    pushMessage = { a, cno };
+
+    expect(pushMessage).toBeDefined();
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  describe("pushMessage", () => {
+    test("should return true when axios post succeeds", async () => {
+      (axios.post as jest.Mock).mockImplementationOnce(
+        async () => await Promise.resolve({ status: 200 })
+      );
+
+      const ep2push = new EP2Push(a, pusherKey, "/push");
+      const result = await ep2push.pushText(
+        notificationOptions,
+        pushedKey.id,
+        a
+      );
+      expect(result).toBe(true);
+    });
+    // test('should fail when key is not posted to sw yet', async () => {
+    //   (axios.post as jest.Mock).mockImplementationOnce(async () => await Promise.resolve({ status: 200 }))
+
+    //   const offlineClient = new EP2Push(mockPushSubscription, pusherKey, serverConfig)
+    //   const result = await offlineClient.pushMessages([correctMessage])
+    //   expect(result).toBe(true)
+    // })
+    // test("should throw an error when axios post fails", async () => {
+    //   (axios.post as jest.Mock).mockRejectedValueOnce(new Error("testError"));
+    //   const offlineClient = new EP2Push(a, pusherKey, config, vapidSubscription);
+    //   await expect(offlineClient.pushText()).rejects.toThrow("testError");
+    //   expect(axios.post).toHaveBeenCalled();
+    //   expect(axios.post).toHaveReturned();
+    // });
+  });
+
+  // describe("getSharedSubscription", () => {
+  //   test("should return the encrypted pushSubscription", () => {
+  //     const offlineClient = new EP2Push(mockPushSubscription, pusherKey, config);
+  //     expect(offlineClient.sharedSubscription).toBeDefined();
+  //   });
+  // });
 });
-
-// describe("EP2Push", () => {
-//   let serverKey: EP2Key;
-//   let ep2key: EP2Key;
-//   let pushedKey: EP2Key;
-//   let correctMessage: EP2PushMessage;
-
-//   const notificationOptions: NotificationOptions = {};
-
-//   let config: EP2PushConfig;
-
-//   let pushAuthorization:EP2PushAuthorization
-
-//   beforeAll(async () => {
-//     serverKey = await EP2Key.create();
-//     ep2key = await EP2Key.create();
-
-//     config = {
-//       ep2PublicKey: serverKey.peerId,
-//       port: 9001,
-//       secure: false,
-//       host: "testHost",
-//       path: "testPath",
-//     };
-//     pushedKey = await EP2Key.create();
-
-//     pushAuthorization = {encryptedPushSubscription:ep2key.encryptundefined, encryptedVapidKeys:undefined}
-
-//     ;{encryptedPrivateKey:serverKey.encrypt(serverKey.peerId, TEST_VAPID_KEYS.keys.privateKey),
-//     publicKey:TEST_VAPID_KEYS.keys.publicKey
-//     }
-
-//     const encryptedPushSubscription = ep2key.encrypt(serverKey.peerId, TEST_PUSH_SUBSCRIPTION as unknown as PushSubscription);
-
-//     pushAuthorization = {encryptedPushSubscription, vapidSubscription}
-
-//     correctMessage = {
-//       encryptedEndpoint: pushAuthorization,
-//       encryptedPayload: EP2Key.encrypt(pushedKey.peerId, notificationOptions),
-//     };
-//   });
-
-//   afterEach(() => {
-//     jest.resetAllMocks();
-//   });
-
-//   describe("pushMessage", () => {
-//     test("should return true when axios post succeeds", async () => {
-//       (axios.post as jest.Mock).mockImplementationOnce(
-//         async () => await Promise.resolve({ status: 200 })
-//       );
-
-//       const ep2push = new EP2Push(pushAuthorization, ep2key, config, vapidSubscription);
-//       const result = await ep2push.pushText(notificationOptions, pushedKey.peerId, pushAuthorization);
-//       expect(result).toBe(true);
-//     });
-//     // test('should fail when key is not posted to sw yet', async () => {
-//     //   (axios.post as jest.Mock).mockImplementationOnce(async () => await Promise.resolve({ status: 200 }))
-
-//     //   const offlineClient = new EP2Push(mockPushSubscription, pusherKey, serverConfig)
-//     //   const result = await offlineClient.pushMessages([correctMessage])
-//     //   expect(result).toBe(true)
-//     // })
-//     test("should throw an error when axios post fails", async () => {
-//       (axios.post as jest.Mock).mockRejectedValueOnce(new Error("testError"));
-//       const offlineClient = new EP2Push(pushAuthorization, ep2key, config,vapidSubscription);
-//       await expect(
-//         offlineClient.pushText()
-
-//       ).rejects.toThrow("testError");
-//       expect(axios.post).toHaveBeenCalled();
-//       expect(axios.post).toHaveReturned();
-//     });
-//   });
-
-//   describe("getSharedSubscription", () => {
-//     test("should return the encrypted pushSubscription", () => {
-//       const offlineClient = new EP2Push(mockPushSubscription, ep2key, config);
-//       expect(offlineClient.sharedSubscription).toBeDefined();
-//     });
-//   });
-// });
 
 // describe("register", () => {
 //   let mockSecureKey: EP2Key;
@@ -150,7 +165,7 @@ describe("EP2Push API", () => {
 //     mockServerConfig = {
 //       host: "hostname",
 //       path: "/push",
-//       ep2PublicKey: mockServerKey.peerId,
+//       ep2PublicKey: mockServerKey.id,
 //       port: 9001,
 //       secure: false,
 //     };
@@ -218,7 +233,7 @@ describe("EP2Push API", () => {
 
 //     const encryptedPushSubscription: SymmetricallyEncryptedMessage<PushSubscription> =
 //       mockSecureKey.encryptSymmetrically(
-//         mockServerKey.peerId,
+//         mockServerKey.id,
 //         mockPushSubscription
 //       );
 
@@ -230,7 +245,7 @@ describe("EP2Push API", () => {
 //     const recipient = await EP2Key.create();
 //     offlineClient?.pushText(
 //       {} as NotificationOptions,
-//       recipient.peerId,
+//       recipient.id,
 //       encryptedPushSubscription
 //     );
 //     expect(axios.post).toHaveBeenCalled(); //With(mockPushSubscription.endpoint, encryptedPushMessages);
@@ -414,7 +429,7 @@ describe("EP2Push API", () => {
 //       vibrate: [100, 200, 100, 200, 300],
 //     };
 //     const encryptedMessage: SymmetricallyEncryptedMessage<NotificationOptions> =
-//       pusherKey.encryptSymmetrically(pushedKey.peerId, notificationOptions);
+//       pusherKey.encryptSymmetrically(pushedKey.id, notificationOptions);
 //     // Call the event handler function with a mock push event object
 //     const mockPush = { data: { text: () => JSON.stringify(encryptedMessage) } };
 //     handlePush(mockPush);
@@ -463,7 +478,7 @@ describe("EP2Push API", () => {
 //       vibrate: [100, 200, 100, 200, 300],
 //     };
 //     const encryptedMessage: SymmetricallyEncryptedMessage<NotificationOptions> =
-//       pusherKey.encryptSymmetrically(pushedKey.peerId, notificationOptions);
+//       pusherKey.encryptSymmetrically(pushedKey.id, notificationOptions);
 //     // Call the event handler function with a mock push event object
 //     const mockPush = { data: { text: () => JSON.stringify(encryptedMessage) } };
 //     expect(mockPush).toBeDefined();

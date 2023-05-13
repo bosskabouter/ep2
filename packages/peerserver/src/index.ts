@@ -9,7 +9,7 @@ import {
   ExpressPeerServer,
 } from "peer";
 
-import { type EP2Key } from "@ep2/key";
+import EP2Key from "@ep2/key";
 
 export * from "@ep2/key";
 
@@ -26,21 +26,18 @@ interface EP2PeerServerEvents {
 /**
  * Returns a secure Express Peer server instance.
  *
- * @param serverKey The EP2Key object used for encryption.
+ * @param ep2key The EP2Key object used for encryption.
  * @param server An HTTP or HTTPS server instance.
  * @param options Optional configuration options. See peerJS options
  * @see PeerServer
  * @returns An Express instance with SecurePeerServerEvents.
  */
 export function ExpressEP2PeerServer(
-  serverKey: EP2Key,
+  ep2key: EP2Key,
   server: HttpsServer | HttpServer,
   options?: Partial<IConfig>
 ): Express & PeerServerEvents & EP2PeerServerEvents {
-  return initialize(
-    ExpressPeerServer(server, disableGenerateClientId(options)),
-    serverKey
-  );
+  return initialize(ExpressPeerServer(server, options), ep2key);
 }
 
 /**
@@ -56,28 +53,8 @@ export default function EP2PeerServer(
   options?: Partial<IConfig>,
   callback?: (server: HttpsServer | HttpServer) => void
 ): Express & PeerServerEvents & EP2PeerServerEvents {
-  return initialize(
-    PeerServer(disableGenerateClientId(options), callback),
-    ep2key
-  );
+  return initialize(PeerServer(options, callback), ep2key);
 }
-
-/**
- * Disables the client ID generation option in the configuration object.
- *
- * @param config The configuration object to modify.
- * @returns The modified configuration object.
- */
-const disableGenerateClientId = (
-  config?: Partial<IConfig>
-): Partial<IConfig> => {
-  return {
-    ...config,
-    generateClientId: (): string => {
-      return "use a @ep2/key";
-    },
-  };
-};
 
 /**
  * Adds a connection handler that verifies the token from connecting peers for a valid EncryptedHandshake
@@ -93,8 +70,9 @@ function initialize(
 ): Express & PeerServerEvents & EP2PeerServerEvents {
   server.on("connection", (client: IClient) => {
     const token = client.getToken();
+    const clientId = client.getId();
     try {
-      ep2key.receiveHandshake(client.getId(), JSON.parse(token));
+      ep2key.initSecureChannel(clientId).decrypt(token);
     } catch (error: any) {
       const msg = `Invalid Handshake: ${error as string} `;
       console.debug(msg, token);
