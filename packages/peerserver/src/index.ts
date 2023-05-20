@@ -9,7 +9,7 @@ import {
   ExpressPeerServer,
 } from "peer";
 
-import EP2Key from "@ep2/key";
+import { EP2Key } from "@ep2/key";
 
 export * from "@ep2/key";
 
@@ -72,10 +72,20 @@ function initialize(
     const token = client.getToken();
     const clientId = client.getId();
     try {
-      ep2key.initSecureChannel(clientId).decrypt(token);
+      const decrypted = ep2key.initSecureChannel(clientId).decrypt(token) as {
+        serverId: string;
+        clientId: string;
+      };
+
+      if (
+        decrypted.clientId !== client.getId() &&
+        decrypted.serverId !== ep2key.id
+      )
+        throw Error("Client?server IDs do not match");
+      console.debug("Welcome peer: " + clientId);
     } catch (error: any) {
       const msg = `Invalid Handshake: ${error as string} `;
-      console.debug(msg, token);
+      console.debug(msg, token, error);
       client.getSocket()?.close();
       server.emit("handshake-error", { client, token, msg });
     }

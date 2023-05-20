@@ -1,6 +1,8 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "rootDirs": ["src","../client/src/shared-types/*"],
     "outDir": "out",
     "lib": ["esnext"],
     "composite": true,
@@ -14,8 +16,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@shared-types/*": ["../push/src/shared-types/*"]
+    }
   },
-  "include": ["src/**/*", "src/api/v1/public/index.ts", "**/*.json"],
+  "include": ["src/**/*", "src/**/*.json", "../client/src/shared-types/*"],
   "$schema": "https://json.schemastore.org/tsconfig"
 }

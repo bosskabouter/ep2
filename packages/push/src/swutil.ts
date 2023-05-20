@@ -1,4 +1,4 @@
-import EP2Key, { EP2Cloaked } from "@ep2/key";
+import { EP2Key, EP2Cloaked } from "@ep2/key";
 
 interface PeriodicSyncManager {
   register: (tag: string, options?: { minInterval: number }) => Promise<void>;
@@ -71,13 +71,13 @@ export function EP2PushServiceWorker(
   /**
    *  @param event
    */
-  function handleMessage(event: ExtendableMessageEvent): void {
+  async function handleMessage(event: ExtendableMessageEvent): Promise<void> {
     if (event.data.type === "SKIP_WAITING") {
       // This allows the web app to trigger skipWaiting
       sw.skipWaiting().catch(console.error);
     } else if (event.data.type === "UPDATE_KEY") {
       // UPDATE_KEY event to receive (updated) EP2Key from front-end
-      key = EP2Key.fromJson(event.data.key);
+      key = await EP2Key.fromJson(event.data.key);
     }
   }
 
@@ -110,7 +110,9 @@ export function EP2PushServiceWorker(
     );
   }
 
-  function handlePush(pushEvent: PushEvent): void {
+  async function handlePush(pushEvent: PushEvent): Promise<void> {
+    console.debug("pushEvent received:", pushEvent);
+
     if (key?.id === undefined) {
       pushEvent.waitUntil(
         Promise.reject("No key yet to handle Secure Push Event")
@@ -124,8 +126,8 @@ export function EP2PushServiceWorker(
     }
     let relayedMessage: EP2Cloaked<NotificationOptions>;
     try {
-      relayedMessage =
-        EP2Cloaked.fromJSON<EP2Cloaked<NotificationOptions>>(payload);
+      relayedMessage = pushEvent.data?.json();
+      await EP2Cloaked.revive(relayedMessage);
     } catch (error) {
       console.warn("Invalid PushRequest", error);
       return;

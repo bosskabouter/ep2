@@ -9,9 +9,10 @@ const serverConfig: EP2PushConfig = {
   host: "localhost",
   port: TEST_VALUES.testConfig.server.port,
   path: TEST_VALUES.testConfig.server.EP2_PUSH_CTX,
-  publicKey: TEST_VALUES.testConfig.server.publicKey,
-  vapidPublicKey: TEST_VAPID_KEYS.publicKey,
+  secure: false,
+  ep2PublicKey: TEST_VALUES.testConfig.server.publicKey,
 };
+
 export default function EP2PushYourself(): JSX.Element {
   const [ep2key, setEp2key] = useState<EP2Key>();
   const [ep2push, setEp2push] = useState<EP2Push | null>();
@@ -29,7 +30,7 @@ export default function EP2PushYourself(): JSX.Element {
 
   return (
     <div>
-      <div>Key: {ep2key?.peerId}</div>
+      <div>Key: {ep2key?.id}</div>
       <div>Push: {ep2push?.sharedSubscription?.toString()}</div>
       <div>Result: {result?.toString()}</div>
       <button onClick={postMessage}>Push yourself</button>
@@ -40,7 +41,7 @@ export default function EP2PushYourself(): JSX.Element {
     setCount(count + 1);
     ep2key !== undefined &&
       setResult(
-        await pushSecureMessage("Hi again: " + count.toString(), ep2key.peerId)
+        await pushSecureMessage("Hi again: " + count.toString(), ep2key.id)
       );
   }
 

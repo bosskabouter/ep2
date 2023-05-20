@@ -2,7 +2,7 @@
 // for the list of available Workbox modules, or add any other
 // code you'd like.
 
-import { initSecurePush } from "@ep2/push";
+import { EP2PushServiceWorker, addServiceWorkerHandle} from "@ep2/push/src/swutil";
 import // clientsClaim
 "workbox-core";
 import {
@@ -26,7 +26,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 
 // cleanupOutdatedCaches()
 try {
-  initSecurePush(self);
+  EP2PushServiceWorker(self);
 } catch (error) {
   console.error("Problem registering securePush worker: ", error);
 }

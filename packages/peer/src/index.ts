@@ -7,10 +7,10 @@ import {
   MediaConnection,
 } from "peerjs";
 import EventEmitter from "eventemitter3";
-import EP2Key, { EP2Anonymized, EP2SecureChannel } from "@ep2/key";
+import { EP2Key, EP2Anonymized, EP2SecureChannel } from "@ep2/key";
+export * from "@ep2/key";
 
 type EP2PeerEvents = {
-  decrypted: any;
   connected: EP2SecureLayer;
   close: void;
   error: Error;
@@ -34,26 +34,21 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
   constructor(
     private readonly key: EP2Key,
     public readonly serverPublicKey?: string,
-    options?: PeerJSOption
+    options: PeerJSOption = {}
   ) {
     super(); //emitter
-    options = !options ? {} : options;
 
     if (serverPublicKey) {
       //expect security checks
-      const token = JSON.stringify(
-        Array.from(
-          key
-            .initSecureChannel(serverPublicKey)
-            .encrypt({ serverId: serverPublicKey, peerId: key.id })
-        )
-      );
+      const token = key
+        .initSecureChannel(serverPublicKey)
+        .encrypt({ serverId: serverPublicKey, peerId: key.id });
 
       options = {
         ...options,
         token: token,
       };
-      this.isEp2PeerServer = this.testEp2Server(options);
+      this.isEp2PeerServer = Promise.resolve(true); // this.testEp2Server(options);
     }
     this.peer = new Peer(key.id, options);
     this.peer.on("open", this.handleOpenServer);
@@ -130,24 +125,24 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
    * Tests if the current connecting server accepts a normal (non-secure) peer client.
    * @returns true if the tested connection was closed.
    */
-  private async testEp2Server(options: PeerJSOption): Promise<boolean> {
-    const insecurePeer = new Peer(`${Math.round(Math.random() * 1000000000)}`, {
-      ...options,
-      debug: 0,
-      logFunction(_logLevel, ..._rest) {},
-    });
-    return await new Promise((resolve) => {
-      insecurePeer.on("disconnected", (): void => {
-        clearTimeout(connectionTimeout);
-        resolve(true);
-      });
-      const connectionTimeout = setTimeout(() => {
-        // server should have disconnected if it were secured
-        resolve(false);
-        insecurePeer.destroy();
-      }, 5000);
-    });
-  }
+  // private async testEp2Server(options: PeerJSOption): Promise<boolean> {
+  //   const insecurePeer = new Peer(`${Math.round(Math.random() * 1000000000)}`, {
+  //     ...options,
+  //     debug: 0,
+  //     logFunction(_logLevel, ..._rest) {},
+  //   });
+  //   return await new Promise((resolve) => {
+  //     insecurePeer.on("disconnected", (): void => {
+  //       clearTimeout(connectionTimeout);
+  //       resolve(true);
+  //     });
+  //     const connectionTimeout = setTimeout(() => {
+  //       // server should have disconnected if it were secured
+  //       resolve(false);
+  //       insecurePeer.destroy();
+  //     }, 5000);
+  //   });
+  // }
 
   call(
     peer: string,
@@ -198,7 +193,21 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
   }
 }
 
-export class EP2SecureLayer extends EventEmitter<EP2PeerEvents> {
+export type EP2SecureLayerEvents = {
+  /**
+   * Emitted when data is received from the remote peer.
+   */
+  decrypted: (data: unknown) => void;
+  /**
+   * Emitted when the connection is established and ready-to-use.
+   */
+  open: () => void;
+  close: () => void;
+  error: (error: Error) => void;
+  iceStateChanged: (state: RTCIceConnectionState) => void;
+};
+
+export class EP2SecureLayer extends EventEmitter<EP2SecureLayerEvents> {
   constructor(
     readonly dataConnection: DataConnection,
     readonly secureChannel: EP2SecureChannel
@@ -216,11 +225,11 @@ export class EP2SecureLayer extends EventEmitter<EP2PeerEvents> {
     });
     this.dataConnection.on("open", () => {
       this.dataConnection.on("data", (data: any) => {
-        JSON.parse(data as string) as EP2Anonymized<string>;
-
         const decrypted: string = this.secureChannel.decrypt(data);
         super.emit("decrypted", decrypted);
       });
+
+      this.emit("open");
     });
   }
 

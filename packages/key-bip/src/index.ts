@@ -1,7 +1,7 @@
 import * as bip39 from "bip39";
 import * as bip32 from "bip32";
 import * as ecc from "tiny-secp256k1";
-import EP2Key from "@ep2/key";
+import { EP2Key } from "@ep2/key";
 
 const KEY_STRENGTH_B = 128;
 

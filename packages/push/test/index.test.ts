@@ -11,7 +11,7 @@ import {
 // import { EP2PushServiceWorker, addServiceWorkerHandle } from "../src/swutil";
 
 import TEST_VAPID_KEYS from "./vapid-keys.spec.json";
-import EP2Key, { EP2Anonymized, EP2Cloaked } from "@ep2/key";
+import { EP2Key, EP2Anonymized, EP2Cloaked } from "@ep2/key";
 
 import TEST_PUSH_SUBSCRIPTION from "./push-subscription.spec.json";
 

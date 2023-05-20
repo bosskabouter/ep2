@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import EP2Key, { EP2Sealed } from "@ep2/key";
+import { EP2Key, EP2Sealed } from "@ep2/key";
 import { addServiceWorkerHandle as addServiceWorkerHandle } from "./swutil";
 import {
   EP2PushConfig,
@@ -12,7 +12,7 @@ import {
 } from "./";
 import defaultConfig from "./config";
 import EventEmitter from "eventemitter3";
-import { EP2PushEvents, EP2PushI } from "./types";
+import { EP2PushEvents, EP2PushI } from "./shared-types";
 
 /**
  * Client cLass with initialization for the given server config and client key. Enables pushing (and receiving) of encrypted messages through the push server.
@@ -81,7 +81,6 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
     // Request EP2VapidSubscription from the server
     const vapidSubscription = await EP2Push.getVapidKeys(
       ep2key,
-      config.ep2PublicKey,
       postURI
     );
 
@@ -115,15 +114,12 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
    */
   public static async getVapidKeys(
     ep2key: EP2Key,
-    serverPublicKey: string,
     postURI: string
   ): Promise<EP2PushVapidResponse> {
-    const seal = ep2key.anonymize(serverPublicKey, serverPublicKey);
     const request: EP2PushVapidRequest = {
       peerId: ep2key.id,
-      path: "/vapid",
-      payload: seal,
     };
+
     const response = await axios.post(postURI + "/vapid", request);
 
     if (response.status > 200)
@@ -177,15 +173,13 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
       notificationOptions,
       receiver
     );
-    const pushMessage: EP2PushMessage = {
+    const message: EP2PushMessage = {
       cno: cloakedNotificationOptions,
       a: pushVapid,
     };
-    const encryptedPushMessage = this.ep2key.anonymize(pushMessage, receiver);
     const pushMessageRequest: EP2PushMessageRequest = {
-      payload: encryptedPushMessage,
       peerId: this.ep2key.id,
-      path: "/push",
+      message,
     };
 
     const response = await axios.post(this.postURI, pushMessageRequest);

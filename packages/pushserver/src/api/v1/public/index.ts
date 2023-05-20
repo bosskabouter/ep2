@@ -3,12 +3,17 @@ import type { EP2PushServerConfig } from "../../../config";
 
 import {
   EP2PushMessageRequest,
-  EP2PushVapidRequest,
+  // EP2PushVapidRequest,
   EP2PushVapidResponse,
 } from "@ep2/push";
 
 import webpush from "web-push";
-import EP2Key, { EP2Anonymized } from "@ep2/key";
+import {
+  EP2Key,
+  EP2Anonymized,
+  EP2Sealed,
+  //  EP2Cloaked
+} from "@ep2/key";
 
 // const HTTP_ERROR_PUSH_TOO_BIG = 507
 export default ({
@@ -24,32 +29,30 @@ export default ({
 
   /**
    *
-   * 0. validates request from valid ep2 push client
    * 1. Generates a new Vapid Key pair.
    * 2. Encrypt it the private key so only this server can decrypt: recipient === sender
    * 3. send response vapid public key and encrypted private key back to client
    */
   app.post("/vapid", (request, response) => {
-    const vapidRequest: EP2PushVapidRequest = request.body;
-    const vapidRequestPlaintext: string = vapidRequest.payload.decrypt(
-      serverKey,
-      vapidRequest.peerId
-    );
+    let peerId = request.body.id;
 
-    console.info("I don not care", vapidRequestPlaintext);
+    try {
+      const vapidKeys = webpush.generateVAPIDKeys();
+      // encrypts the keys for itself
+      console.info("Delivering new pair of VAPID keys to: ", peerId, vapidKeys);
 
-    const vapidKeys = webpush.generateVAPIDKeys();
+      const encryptedVapidKeys = serverKey.anonymize(vapidKeys, serverKey.id);
 
-    const secureChannel = serverKey.initSecureChannel(vapidRequest.peerId);
-
-    // encrypts the keys for itself
-    const encryptedVapidKeys = serverKey.anonymize(vapidKeys, serverKey.id);
-
-    const vapidResponse: EP2PushVapidResponse = {
-      encryptedVapidKeys,
-      vapidPublicKey: vapidKeys.publicKey,
-    };
-    response.status(200).json(secureChannel.encrypt(vapidResponse));
+      const vapidResponse: EP2PushVapidResponse = {
+        encryptedVapidKeys,
+        vapidPublicKey: vapidKeys.publicKey,
+      };
+      const encryptedResponse = serverKey.anonymize(vapidResponse, peerId);
+      response.status(200).json(encryptedResponse);
+    } catch (error) {
+      console.error("Error VAPID Request: ", error);
+      return;
+    }
   });
 
   /**
@@ -67,9 +70,11 @@ export default ({
   });
 
   async function push(request: EP2PushMessageRequest): Promise<number> {
-    const pushMessage = request.payload.decrypt(serverKey, request.peerId);
-    const encryptedVapidKeys = pushMessage.a.encryptedVapidKeys;
-    Object.setPrototypeOf(encryptedVapidKeys, EP2Anonymized.prototype);
+    const pushMessage = request.message;
+
+    const encryptedVapidKeys = pushMessage.a.anonymizedVapidKeys;
+
+      await EP2Anonymized.revive(encryptedVapidKeys);
 
     // decrypt by the server, for the server
     const { publicKey, privateKey } = encryptedVapidKeys.decrypt(
@@ -79,12 +84,12 @@ export default ({
 
     webpush.setVapidDetails(config.vapidSubject, publicKey, privateKey);
 
-    const encryptedPushSubscription = pushMessage.a.encryptedPushSubscription;
+    const sealedPushSubscription = pushMessage.a.sealedPushSubscription;
 
-    Object.setPrototypeOf(encryptedPushSubscription, EP2Anonymized.prototype);
+    await EP2Sealed.revive(sealedPushSubscription)
 
     const subscription: webpush.PushSubscription =
-      encryptedPushSubscription.decrypt(
+      sealedPushSubscription.decrypt(
         serverKey
       ) as any as webpush.PushSubscription;
 

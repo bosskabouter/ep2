@@ -33,7 +33,6 @@
   "homepage": "https://github.com/bosskabouter/ep2/tree/master#readme",
   "dependencies": {
     "@ep2/key": "^1.0.0",
-    "@ep2/push": "file:../push",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "web-push": "^3.6.1"

@@ -5,7 +5,7 @@ import express, { type Express } from "express";
 
 import request from "supertest";
 import { jest } from "@jest/globals";
-import EP2Key, { EP2SecureChannel } from "@ep2/key";
+import { EP2Key, EP2SecureChannel } from "@ep2/key";
 const TEST_PORT = 2000 + Math.floor(Math.random() * 5000);
 
 describe("PeerServer", () => {
@@ -21,12 +21,12 @@ describe("PeerServer", () => {
 
   let serverKey: EP2Key;
   let clientKey: EP2Key;
-  
+
   let secureChannel: EP2SecureChannel;
 
   let peerServer: (express.Express & PeerServerEvents) | null;
   let server: Server<typeof IncomingMessage, typeof ServerResponse>;
-  
+
   beforeAll((done) => {
     app = express();
     // jest.useFakeTimers()

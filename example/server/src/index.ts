@@ -1,5 +1,5 @@
-// import { EP2Key } from "@ep2/key";
-import { EP2KeyBIP } from "@ep2/key-bip";
+import { EP2Key } from "@ep2/key";
+// import { EP2KeyBIP } from "@ep2/key-bip";
 import { ExpressEP2PushServer } from "@ep2/pushserver";
 import { ExpressEP2PeerServer } from "@ep2/peerserver";
 
@@ -9,6 +9,7 @@ import http from "http";
 import cors from "cors";
 
 import TEST_VALUES from "../../example-config.json";
+// import { EP2KeyBIP } from "@ep2/key-bip";
 
 const PORT = TEST_VALUES.testConfig.server.port;
 
@@ -17,8 +18,8 @@ const app = express();
 const server = http.createServer(app);
 
 // we use both secure - push and peerserver with the same key, but they can use their own.
-EP2KeyBIP.create(TEST_VALUES.testConfig.server.seed)
-  .then((key: EP2KeyBIP) => {
+EP2Key.create(TEST_VALUES.testConfig.server.seed)
+  .then((key: EP2Key) => {
     app.use(cors());
 
     app.use(
@@ -44,10 +45,10 @@ EP2KeyBIP.create(TEST_VALUES.testConfig.server.seed)
     🐝   
         http://localhost:${PORT.toString()}                             🐝
 
-        PUBLIC KEY: ${key.peerId}   
+        PUBLIC KEY: ${key.id}   
         
         Remember your mnemonic for easy recovery of your key: 
-        *${key.mnemonic}*
+        *${key.seed}*
         
 
         `

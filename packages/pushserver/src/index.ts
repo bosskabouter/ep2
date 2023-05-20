@@ -5,11 +5,12 @@ import https from "node:https";
 import { createInstance } from "./instance";
 import type { EP2PushServerConfig } from "./config";
 import defaultConfig from "./config";
-import EP2Key from "@ep2/key";
+import { EP2Key } from "@ep2/key";
 
 // export default EP2Key;
 // export * from "@ep2/key";
-export * from "@ep2/key"
+export * from "@ep2/key";
+// export * from "@ep2/push";
 
 function ExpressEP2PushServer(
   key: EP2Key,

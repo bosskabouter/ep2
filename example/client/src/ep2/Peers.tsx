@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { EP2Peer, EP2Key, type SecureLayer } from "@ep2/peer";
+import { EP2Key, EP2Peer, type EP2SecureLayer } from "@ep2/peer";
 
 // import { EP2KeyBip } from '@ep2/key-bip'
 
@@ -11,8 +11,8 @@ function Peers(): JSX.Element {
 
   const [local, setLocal] = useState(true);
   useEffect(() => {
-    if (key1 === undefined) void EP2Key.create().then(setKey1);
-    if (key2 === undefined) void EP2Key.create().then(setKey2);
+    if (!key1) EP2Key.create().then(setKey1);
+    if (!key2) EP2Key.create().then(setKey2);
   });
 
   return (
@@ -34,11 +34,7 @@ function Peers(): JSX.Element {
             <PeerInstance ep2Key={key1} local={local} />
           </div>
           <div>
-            <PeerInstance
-              ep2Key={key2}
-              otherPeerId={key1.peerId}
-              local={local}
-            />
+            <PeerInstance ep2Key={key2} otherPeerId={key1.id} local={local} />
             {/* {key2.mnemonic} */}
           </div>
         </div>
@@ -59,15 +55,15 @@ function PeerInstance({
   const [ep2Peer, setEp2Peer] = useState<EP2Peer>();
 
   const [online, setOnline] = useState<boolean>();
-  const [secureLayer, setSecureLayer] = useState<SecureLayer>();
+  const [secureLayer, setSecureLayer] = useState<EP2SecureLayer>();
 
   const [count, setCount] = useState(0);
 
   const [received, setReceived] = useState("");
 
-  function listenAndStore(sl: SecureLayer): void {
+  function listenAndStore(sl: EP2SecureLayer): void {
     sl.addListener("decrypted", (value) => {
-      setReceived(value);
+      setReceived(value as string);
     });
     setSecureLayer(sl);
   }
@@ -77,18 +73,19 @@ function PeerInstance({
           host: "localhost",
           port: TEST_CONFIG.testConfig.server.port,
           path: TEST_CONFIG.testConfig.server.EP2_PEER_CTX,
-          debug: 1,
+          debug: 3,
           secure: false,
           key: "ep2peer",
         })
       : new EP2Peer(ep2Key);
-    peer.on("connection", (con) => {
+    peer.on("connected", (con) => {
+      console.info('connected', con.metadata.secureLayer)
       listenAndStore(con.metadata.secureLayer);
     });
     peer.on("open", () => {
       setOnline(true);
       if (otherPeerId !== undefined) {
-        listenAndStore(peer.connectSecurely(otherPeerId));
+        listenAndStore(peer.connect(otherPeerId));
       }
     });
     peer.on("error", (e) => {

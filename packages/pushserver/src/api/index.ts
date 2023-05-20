@@ -3,7 +3,7 @@ import express from "express";
 import PublicApi from "./v1/public";
 import type { EP2PushServerConfig } from "../config";
 import * as publicContent from "../app.json";
-import EP2Key from "@ep2/key";
+import { EP2Key } from "..";
 
 export const Api = ({
   key,
@@ -14,14 +14,14 @@ export const Api = ({
   config: EP2PushServerConfig;
   corsOptions: CorsOptions;
 }): express.Router => {
-  const app = express.Router();
-  app.use(cors(corsOptions));
+  const router = express.Router();
+  router.use(cors(corsOptions));
 
-  app.get("/", (_, res) => {
+  router.get("/", (_, res) => {
     res.send(publicContent);
   });
 
-  app.use("/", PublicApi({ key, config }));
+  router.use("/", PublicApi({ key, config }));
 
-  return app;
+  return router;
 };

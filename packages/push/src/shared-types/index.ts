@@ -1,6 +1,6 @@
-import EP2Key, { EP2Anonymized, EP2Cloaked, EP2Sealed } from "@ep2/key";
+import { EP2Key, EP2Anonymized, EP2Cloaked, EP2Sealed } from "@ep2/key";
 import EventEmitter from "eventemitter3";
-import { EP2PushConfig } from "../";
+import { EP2PushConfig } from "..";
 
 /**
  * TL;DR The final result of the API;
@@ -87,27 +87,23 @@ export interface EP2PushMessage {
  */
 export interface EP2PushRequest {
   peerId: string;
-  path: string;
-  payload: EP2Anonymized<any>;
 }
 
 /**
- * The object passed from EP2Push to EP2PushServer in a post request. No additional info is needed, besides the EP2PushRequest basic authentication.
+ * A request from EP2Push to EP2PushServer contains requester ID and the message to push.
  */
 export interface EP2PushMessageRequest extends EP2PushRequest {
-  path: "/push";
+  /**
+   * The message to push
+   */
+  message: EP2PushMessage;
 }
-// export interface EP2PushMessageResponse  {
-// should there be a response?
-// }
 
 /**
  * A request for a new pair of VAPID keys from the server. private
  * Nothing is needed for a new Vapid keypair after valid handshake.
  */
-export interface EP2PushVapidRequest extends EP2PushRequest {
-  path: "/vapid";
-}
+export interface EP2PushVapidRequest extends EP2PushRequest {}
 /**
  * Response from EP2PushServer after successful VAPIDSubscribe
  */

@@ -1,8 +1,7 @@
 // import { DataConnection } from 'peerjs'
 // import { jest } from '@jest/globals'
 
-import EP2Key from "@ep2/key";
-import { EP2Peer } from "../src";
+import { EP2Key, EP2Peer } from "../src";
 
 // Import the PeerJS library
 // jest.mock('peerjs', () => {

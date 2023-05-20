@@ -12,7 +12,9 @@ const conf: JestConfigWithTsJest = {
   forceExit: true,
   projects: [
     {
-      preset: "ts-jest/presets/default-esm",
+//      preset: "ts-jest/presets/default-esm",
+      preset: "ts-jest",
+
       displayName: "@ep2/key",
       testEnvironment: "node",
       testMatch: ["<rootDir>/packages/key/**/*.(spec|test).ts?(x)"],

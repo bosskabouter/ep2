@@ -1,5 +1,4 @@
-import { EP2Peer } from "../src/";
-import { EP2SecureLayer } from "../src";
+import { EP2Peer, EP2Key, EP2SecureLayer } from "../src";
 
 import { Peer } from "peerjs";
 import { type DataConnection, type PeerConnectOption } from "peerjs";
@@ -7,7 +6,6 @@ import { type DataConnection, type PeerConnectOption } from "peerjs";
 import { jest } from "@jest/globals";
 import { type SpiedFunction } from "jest-mock";
 
-import EP2Key from "@ep2/key";
 
 describe("EP2Peer - MockServer", () => {
   let connectMock: SpiedFunction<

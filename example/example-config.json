@@ -3,7 +3,7 @@
     "server": {
       "port": 9001,
       "seed": "donkey eager potato discover stuff govern ill token gentle gas peasant orient",
-      "publicKey": "7d40fd9b1ad0a98e5d2aa5042f972c5d25b3295086af57aba476be449bbc430b",
+      "publicKey": "992f3845a60d8687721db5d722ad3875bfcf09facc5ff340b6bd215ff568ac27",
       "EP2_PUSH_CTX": "/ep2-push",
       "EP2_PEER_CTX": "/ep2-peer"
     },

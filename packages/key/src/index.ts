@@ -1,9 +1,17 @@
 import sodium from "libsodium-wrappers";
 
 /**
+ * The core of the actual key holds the signKeyPair and boxKeyPair for a given key set.
+ */
+interface EP2KeySet {
+  signKeyPair: sodium.KeyPair;
+  boxKeyPair: sodium.KeyPair;
+}
+
+/**
  * `EP2Key`: a class representing the cryptographic keypair used by a peer during the protocol. It contains the peer's public and private keys for both signing and encryption, and it defines the `Peer ID` based on base64 encoded public encryption key. It can initiate a handshake with another peer, and receive a handshake from another peer to establish a common shared secret to be used with the `SecureChannel`.
  */
-export default class EP2Key {
+export class EP2Key {
   /**
    * Creates an EP2Key instance with a seed value used for keypair generation.
    * If no seed is provided, a random seed will be generated.
@@ -48,7 +56,8 @@ export default class EP2Key {
     }
   }
 
-  static fromJson(json: string): EP2Key {
+  static async fromJson(json: string): Promise<EP2Key> {
+    await sodium.ready;
     const parsed = JSON.parse(json);
 
     const seed = Uint8Array.from(parsed.seed);
@@ -213,35 +222,18 @@ export class EP2SecureChannel {
 export abstract class EP2Encrypted<ANY> {
   [key: string]: null | number[] | Uint8Array | Function | number | string;
 
-  cipher: Uint8Array;
+  cipher: string;
   constructor(object: ANY) {
-    this.cipher = sodium.from_string(JSON.stringify(object));
+    this.cipher = JSON.stringify(object);
   }
   /**
    * This class doesn't need anything since nothing is encrypted yet, just stringified.
    * @param _ep2key unused in this abstract
-   * @param _sender unused in this abstract, only
+   * @param _sender unused in this abstract
    * @returns
    */
   protected decrypt(_ep2key?: EP2Key, _sender?: string): ANY {
-    return JSON.parse(sodium.to_string(this.cipher));
-  }
-
-  /**
-   * Converts Uint8Arrays into number[]
-   * @returns json with number[]'s instead of Uint8Arrays
-   */
-  toJSON(): string {
-    const copy: any = {};
-    const properties = Object.getOwnPropertyNames(this);
-    properties.forEach((prop: string) => {
-      let value = this[prop];
-      if (typeof value === "object" && value instanceof Uint8Array) {
-        value = Array.from(value as Uint8Array);
-      }
-      copy[prop] = value;
-    });
-    return JSON.stringify(copy);
+    return JSON.parse(this.cipher);
   }
 
   /**
@@ -249,20 +241,9 @@ export abstract class EP2Encrypted<ANY> {
    * @param json a serialized `EP2Encrypted` message from toJSON()
    * @returns a valid `EP2Encrypted` with Uint8Arrays and working methods.
    */
-  static fromJSON<T>(json: string): T {
-    const parsed = JSON.parse(json);
-    const properties = Object.getOwnPropertyNames(parsed);
-    properties.forEach((prop) => {
-      let value = parsed[prop];
-      if (typeof value === "object" && value instanceof Array) {
-        const ar = value as [];
-        const uint8array = Uint8Array.from(ar);
-        parsed[prop] = uint8array;
-      }
-    });
-
-    Object.setPrototypeOf(parsed, this.prototype);
-    return parsed;
+  static async revive<T extends EP2Encrypted<any>>(t: T) {
+    await sodium.ready;
+    Object.setPrototypeOf(t, this.prototype);
   }
 }
 /**
@@ -272,38 +253,43 @@ export class EP2Anonymized<ANY> extends EP2Encrypted<ANY> {
   /**
    * encrypted Sender Public Signing Key
    */
-  espsk: Uint8Array;
-  nonce: Uint8Array;
+  espsk: string;
+  nonce: string;
 
   constructor(obj: ANY, ep2key: EP2Key, receiver: string) {
     super(obj);
 
-    this.nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
+    const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
+
     const receiverKeyPublicKey = EP2Key.convertId2PublicKey(receiver);
 
     // encrypt the message with the receiver's public key
-    this.cipher = sodium.crypto_box_easy(
+    //  let cipher = sodium.from_string(this.cipher);
+
+    let cipher = sodium.crypto_box_easy(
       this.cipher,
-      this.nonce,
+      nonce,
       receiverKeyPublicKey,
       ep2key.keySet.boxKeyPair.privateKey
     );
     // encrypt signing public to remain incognito
     this.espsk = sodium.crypto_box_easy(
       ep2key.keySet.signKeyPair.publicKey,
-      this.nonce,
+      nonce,
       receiverKeyPublicKey,
-      ep2key.keySet.boxKeyPair.privateKey
+      ep2key.keySet.boxKeyPair.privateKey,
+      "base64"
     );
-
+    this.nonce = sodium.to_base64(nonce);
     // sign the cipher with the sender's private signing key
     const signature = sodium.crypto_sign_detached(
-      this.cipher,
+      cipher,
       ep2key.keySet.signKeyPair.privateKey
     );
 
     // concatenate the signature and the cipher
-    super.cipher = new Uint8Array([...signature, ...this.cipher]);
+    cipher = new Uint8Array([...signature, ...cipher]);
+    this.cipher = sodium.to_base64(cipher);
   }
   /**
    * To decrypt an anonymized message the receiver must know the sender's id.
@@ -312,28 +298,34 @@ export class EP2Anonymized<ANY> extends EP2Encrypted<ANY> {
    * @returns
    */
   override decrypt(ep2key: EP2Key, sender: string): ANY {
+    let cipher = sodium.from_base64(this.cipher);
+    const nonce = sodium.from_base64(this.nonce);
+    const espsk = sodium.from_base64(this.espsk);
     const senderPublicBoxKey = EP2Key.convertId2PublicKey(sender);
-    const decrypted = sodium.crypto_box_open_easy(
-      this.cipher.slice(sodium.crypto_sign_BYTES),
-      this.nonce,
-      senderPublicBoxKey,
-      ep2key.keySet.boxKeyPair.privateKey
-    );
+
     const decryptedPublicSigningKey = sodium.crypto_box_open_easy(
-      this.espsk,
-      this.nonce,
+      espsk,
+      nonce,
       senderPublicBoxKey,
       ep2key.keySet.boxKeyPair.privateKey
     );
     // verify the signature with the sender's public signing key
-    const signature = this.cipher.slice(0, sodium.crypto_sign_BYTES);
+    const signature = cipher.slice(0, sodium.crypto_sign_BYTES);
     const verified = sodium.crypto_sign_verify_detached(
       signature,
-      this.cipher.slice(sodium.crypto_sign_BYTES),
+      cipher.slice(sodium.crypto_sign_BYTES),
       decryptedPublicSigningKey
     );
-    this.cipher = decrypted;
+
     if (!verified) throw Error("Failed to verify message signature");
+
+    this.cipher = sodium.crypto_box_open_easy(
+      cipher.slice(sodium.crypto_sign_BYTES),
+      nonce,
+      senderPublicBoxKey,
+      ep2key.keySet.boxKeyPair.privateKey,
+      "text"
+    );
     return super.decrypt();
   }
 }
@@ -344,16 +336,21 @@ export class EP2Sealed<ANY> extends EP2Encrypted<ANY> {
   constructor(obj: ANY, receiver: string) {
     super(obj);
     const receiverPublicBoxKey = EP2Key.convertId2PublicKey(receiver);
-    this.cipher = sodium.crypto_box_seal(this.cipher, receiverPublicBoxKey);
+    this.cipher = sodium.crypto_box_seal(
+      this.cipher,
+      receiverPublicBoxKey,
+      "base64"
+    );
   }
 
   override decrypt(ep2key: EP2Key): ANY {
+    let cipher = sodium.from_base64(this.cipher);
     this.cipher = sodium.crypto_box_seal_open(
-      this.cipher,
+      cipher,
       ep2key.keySet.boxKeyPair.publicKey,
-      ep2key.keySet.boxKeyPair.privateKey
+      ep2key.keySet.boxKeyPair.privateKey,
+      "text"
     );
-
     return super.decrypt(ep2key);
   }
 }
@@ -362,45 +359,45 @@ export class EP2Sealed<ANY> extends EP2Encrypted<ANY> {
  * Message can be decrypted by the receiver without knowing the sender (like Sealed), but identifies, verifies and returns the sender together with the sent object.
  */
 export class EP2Cloaked<ANY> extends EP2Encrypted<ANY> {
-  encryptedSenderPublicBoxKey: Uint8Array;
-
-  //only available after uncloak
+  encryptedSenderPublicBoxKey: string;
+  /**
+   * property filled in during uncloak
+   */
   public sender: string | null = null;
+
   constructor(
     obj: ANY,
     senderPublicBoxKey: Uint8Array,
     receiverPublicBoxKey: Uint8Array
   ) {
     super(obj);
-    this.cipher = sodium.crypto_box_seal(this.cipher, receiverPublicBoxKey);
-
+    this.cipher = sodium.crypto_box_seal(
+      this.cipher,
+      receiverPublicBoxKey,
+      "base64"
+    );
     this.encryptedSenderPublicBoxKey = sodium.crypto_box_seal(
       senderPublicBoxKey,
-      receiverPublicBoxKey
+      receiverPublicBoxKey,
+      "base64"
     );
   }
 
   override decrypt(ep2key: EP2Key): ANY & { sender: string } {
     const sender = sodium.crypto_box_seal_open(
-      this.encryptedSenderPublicBoxKey,
+      sodium.from_base64(this.encryptedSenderPublicBoxKey),
       ep2key.keySet.boxKeyPair.publicKey,
       ep2key.keySet.boxKeyPair.privateKey
     );
     this.sender = EP2Key.convertPublicKey2Id(sender);
-    this.cipher = sodium.crypto_box_seal_open(
-      this.cipher,
-      ep2key.keySet.boxKeyPair.publicKey,
-      ep2key.keySet.boxKeyPair.privateKey
-    );
-    return { ...super.decrypt(ep2key), sender: this.sender };
-  }
-  // }
-}
 
-/**
- * Interface for holding the signKeyPair and boxKeyPair for a given key set.
- */
-interface EP2KeySet {
-  signKeyPair: sodium.KeyPair;
-  boxKeyPair: sodium.KeyPair;
+    // let cipher = sodium.from_base64(this.cipher);
+    this.cipher = sodium.crypto_box_seal_open(
+      sodium.from_base64(this.cipher),
+      ep2key.keySet.boxKeyPair.publicKey,
+      ep2key.keySet.boxKeyPair.privateKey,
+      "text"
+    );
+    return { ...super.decrypt(), sender: this.sender };
+  }
 }
