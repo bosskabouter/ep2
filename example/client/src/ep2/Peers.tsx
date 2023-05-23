@@ -55,6 +55,8 @@ function PeerInstance({
   const [ep2Peer, setEp2Peer] = useState<EP2Peer>();
 
   const [online, setOnline] = useState<boolean>();
+  const [isEP2PeerServer, setIsEP2PeerServer] = useState<boolean>();
+
   const [secureLayer, setSecureLayer] = useState<EP2SecureLayer>();
 
   const [count, setCount] = useState(0);
@@ -73,14 +75,19 @@ function PeerInstance({
           host: "localhost",
           port: TEST_CONFIG.testConfig.server.port,
           path: TEST_CONFIG.testConfig.server.EP2_PEER_CTX,
-          debug: 3,
+          debug: 0,
           secure: false,
           key: "ep2peer",
         })
       : new EP2Peer(ep2Key);
-    peer.on("connected", (con) => {
-      console.info('connected', con.metadata.secureLayer)
-      listenAndStore(con.metadata.secureLayer);
+
+    peer.isEp2PeerServer.then((ep2Verified) => {
+      console.info("Secure Server: " + ep2Verified);
+      setIsEP2PeerServer(ep2Verified);
+    });
+    peer.on("connected", (secureLayer) => {
+      console.info("connected", secureLayer);
+      listenAndStore(secureLayer);
     });
     peer.on("open", () => {
       setOnline(true);
@@ -128,12 +135,17 @@ function PeerInstance({
   return (
     <div>
       <div style={{ color: getColorFromBase64(ep2Peer?.id) }}>
-        Peer ID: {shortenBase64(ep2Peer?.id)}{" "}
+        Peer ID: {shortenBase64(ep2Peer?.id)}
       </div>
-      <div>
-        Online: {online !== undefined ? "🟢" : "🟥"} {online}
-      </div>
-      <div>connected: {secureLayer !== undefined ? "🧅" : ""}</div>
+
+      {online ? <div title="Online">🟢</div> : <div title="Offline">🟥</div>}
+      {isEP2PeerServer ? (
+        <div title="EP2Peer Server">👮 </div>
+      ) : (
+        <div title="Generic PeerJS Server">😷</div>
+      )}
+      {secureLayer && <div title="Connected with other peer"> 🧅</div>}
+
       <div>received: {received}</div>
 
       <button onClick={doSendText} color="green">

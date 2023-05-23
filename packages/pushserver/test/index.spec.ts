@@ -29,6 +29,7 @@ import {
   EP2PushVapidResponse,
   EP2PushMessage,
 } from "@ep2/push";
+import { HTTP_ERROR_PUSH_TOO_BIG } from "../src/api/v1/public";
 
 const TEST_PORT = 2000 + Math.floor(Math.random() * 5000);
 
@@ -109,20 +110,25 @@ describe("EP2PushServer", () => {
       } as EP2PushAuthorization;
     };
 
-    const mockPushMessageRequest: () => Promise<EP2PushMessageRequest> =
-      async () => {
-        const notificationOptions: NotificationOptions = {
-          actions: [{ action: "", title: "Open Me" }],
-          body: "Read the body",
-          vibrate: [1000, 1000, 3000],
-        };
-        const a = await mockAuthorization();
-        const cno = pusherKey.cloak(notificationOptions, pushedKey.id);
-        const message: EP2PushMessage = { a, cno };
-        const peerId = pusherKey.id;
-        const pushMessageRequest: EP2PushMessageRequest = { peerId, message };
-        return pushMessageRequest;
+    const mockPushMessageRequest: (
+      b: boolean
+    ) => Promise<EP2PushMessageRequest> = async (b) => {
+      let body = "Read the body";
+      if (b) body = body.repeat(1000);
+      const notificationOptions: NotificationOptions = {
+        actions: [{ action: "", title: "Open Me" }],
+        body,
+        vibrate: [1000, 1000, 3000],
       };
+
+      const a = await mockAuthorization();
+      const cno = pusherKey.cloak(notificationOptions, pushedKey.id);
+      const message: EP2PushMessage = { a, cno };
+      const peerId = pusherKey.id;
+      const pushMessageRequest: EP2PushMessageRequest = { peerId, message };
+      return pushMessageRequest;
+    };
+
     let authorization: EP2PushAuthorization;
     beforeAll(async () => {
       authorization = await mockAuthorization();
@@ -130,7 +136,7 @@ describe("EP2PushServer", () => {
     });
 
     test("should Push", async () => {
-      const push: EP2PushMessageRequest = await mockPushMessageRequest();
+      const push: EP2PushMessageRequest = await mockPushMessageRequest(false);
       expect(push).toBeDefined();
       const response = await request(app).post("/ep2push/push").send(push);
       expect(response).toBeDefined();
@@ -139,6 +145,16 @@ describe("EP2PushServer", () => {
       expect(response.status).toBeTruthy();
     });
 
+    test("should reject - payload too big", async () => {
+      const push: EP2PushMessageRequest = await mockPushMessageRequest(true);
+      expect(push).toBeDefined();
+
+      const response = await request(app).post("/ep2push/push").send(push);
+      expect(response).toBeDefined();
+      expect(response.text).toContain('Insufficient Storage');
+      expect(response.error.toString()).toContain(HTTP_ERROR_PUSH_TOO_BIG.toString());
+      expect(response.status).toBeTruthy();
+    });
     //   const encryptedVapidKeys = pushVapidResponse.encryptedVapidKeys;
     //   expect(encryptedVapidKeys).toBeDefined();
 
@@ -339,6 +355,14 @@ describe("EP2PushServer", () => {
       expect(resp).toBeDefined();
       expect(resp.error).toBeFalsy();
       expect(resp.text).toContain("<h1>EP²Push - Test</h1>");
+    });
+
+    test("should get test vapid keys", async () => {
+      const resp = await request(app).post("/ep2push/test");
+      expect(resp).toBeDefined();
+      expect(resp.error).toBeFalsy();
+      expect(resp.text).toContain("publicKey");
+      expect(resp.text).toContain("privateKey");
     });
   });
 });

@@ -74,20 +74,26 @@ function initialize(
     try {
       const decrypted = ep2key.initSecureChannel(clientId).decrypt(token) as {
         serverId: string;
-        clientId: string;
+        peerId: string;
       };
 
       if (
-        decrypted.clientId !== client.getId() &&
+        decrypted.peerId !== client.getId() ||
         decrypted.serverId !== ep2key.id
-      )
-        throw Error("Client?server IDs do not match");
+      ) {
+        console.info("decrypted.clientId", decrypted.peerId);
+        console.info("client.getId()", client.getId());
+        console.info("decrypted.serverId", decrypted.serverId);
+        console.info("ep2key.id", ep2key.id);
+        throw Error(
+          "Client?server IDs do not match. ClientID: " + client.getId()
+        );
+      }
       console.debug("Welcome peer: " + clientId);
     } catch (error: any) {
-      const msg = `Invalid Handshake: ${error as string} `;
-      console.debug(msg, token, error);
+      console.debug("Invalid Handshake:" + error, token);
       client.getSocket()?.close();
-      server.emit("handshake-error", { client, token, msg });
+      server.emit("handshake-error", { clientId, token });
     }
   });
   return server as Express & PeerServerEvents & EP2PeerServerEvents;

@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "out",
 
-    "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker"],
+    "lib": ["DOM", "DOM.Iterable", "ESNext", "WebWorker" ],
     "composite": true,
     "esModuleInterop": true,
     "target": "ES2016",

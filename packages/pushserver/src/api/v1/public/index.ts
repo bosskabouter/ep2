@@ -15,7 +15,7 @@ import {
   //  EP2Cloaked
 } from "@ep2/key";
 
-// const HTTP_ERROR_PUSH_TOO_BIG = 507
+export const HTTP_ERROR_PUSH_TOO_BIG = 507;
 export default ({
   key: serverKey,
   config,
@@ -34,25 +34,20 @@ export default ({
    * 3. send response vapid public key and encrypted private key back to client
    */
   app.post("/vapid", (request, response) => {
-    let peerId = request.body.id;
+    let peerId = request.body.peerId;
+    console.info("Generating keys for " + peerId);
+    const vapidKeys = webpush.generateVAPIDKeys();
+    // encrypts the keys for itself
+    // console.info("Delivering new pair of VAPID keys to: ", peerId, vapidKeys);
 
-    try {
-      const vapidKeys = webpush.generateVAPIDKeys();
-      // encrypts the keys for itself
-      console.info("Delivering new pair of VAPID keys to: ", peerId, vapidKeys);
+    const encryptedVapidKeys = serverKey.anonymize(vapidKeys, serverKey.id);
 
-      const encryptedVapidKeys = serverKey.anonymize(vapidKeys, serverKey.id);
-
-      const vapidResponse: EP2PushVapidResponse = {
-        encryptedVapidKeys,
-        vapidPublicKey: vapidKeys.publicKey,
-      };
-      const encryptedResponse = serverKey.anonymize(vapidResponse, peerId);
-      response.status(200).json(encryptedResponse);
-    } catch (error) {
-      console.error("Error VAPID Request: ", error);
-      return;
-    }
+    const vapidResponse: EP2PushVapidResponse = {
+      encryptedVapidKeys,
+      vapidPublicKey: vapidKeys.publicKey,
+    };
+    const encryptedResponse = serverKey.anonymize(vapidResponse, peerId);
+    response.json(encryptedResponse);
   });
 
   /**
@@ -62,10 +57,11 @@ export default ({
   app.post("/push", (request, response) => {
     push(request.body as EP2PushMessageRequest)
       .then((res) => {
-        response.status(200).send(res);
+        response.sendStatus(res);
       })
       .catch((e) => {
-        response.status(500).send(e.toString());
+        console.debug(e);
+        response.sendStatus(500);
       });
   });
 
@@ -74,7 +70,7 @@ export default ({
 
     const encryptedVapidKeys = pushMessage.a.anonymizedVapidKeys;
 
-      await EP2Anonymized.revive(encryptedVapidKeys);
+    await EP2Anonymized.revive(encryptedVapidKeys);
 
     // decrypt by the server, for the server
     const { publicKey, privateKey } = encryptedVapidKeys.decrypt(
@@ -86,22 +82,16 @@ export default ({
 
     const sealedPushSubscription = pushMessage.a.sealedPushSubscription;
 
-    await EP2Sealed.revive(sealedPushSubscription)
+    await EP2Sealed.revive(sealedPushSubscription);
 
     const subscription: webpush.PushSubscription =
       sealedPushSubscription.decrypt(
         serverKey
       ) as any as webpush.PushSubscription;
 
-    // encryptedPushSubscription.decrypt(
-    //   serverKey
-    // ) as any as webpush.PushSubscription;
-
     const payloadBytes = Buffer.from(JSON.stringify(pushMessage.cno));
     if (payloadBytes.length >= PUSH_MAX_BYTES) {
-      throw Error(
-        `Refusing push too big: ${payloadBytes.length} bytes. Max size: ${PUSH_MAX_BYTES} bytes.`
-      );
+      return HTTP_ERROR_PUSH_TOO_BIG;
     }
     const res = await webpush.sendNotification(subscription, payloadBytes, {
       TTL: 1000 * 60,
@@ -123,7 +113,7 @@ export default ({
     });
     app.post("/test", (_request, response) => {
       const keys = webpush.generateVAPIDKeys();
-      response.status(200).send(JSON.stringify(keys));
+      response.send(JSON.stringify(keys));
     });
   }
 

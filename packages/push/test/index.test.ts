@@ -7,6 +7,8 @@ import {
   EP2PushVapidResponse,
   EP2Sealed,
   EP2PushAuthorization,
+  updateEP2ServiceWorker,
+  // EP2PushConfig,
 } from "../src";
 // import { EP2PushServiceWorker, addServiceWorkerHandle } from "../src/swutil";
 
@@ -14,6 +16,7 @@ import TEST_VAPID_KEYS from "./vapid-keys.spec.json";
 import { EP2Key, EP2Anonymized, EP2Cloaked } from "@ep2/key";
 
 import TEST_PUSH_SUBSCRIPTION from "./push-subscription.spec.json";
+import { EP2PushServiceWorker, addServiceWorkerHandle } from "../src/swutil";
 
 jest.mock("axios");
 
@@ -71,7 +74,11 @@ describe("VAPID request", () => {
 
   // let config: EP2PushConfig;
 
+  let pushSubscription: PushSubscription =
+    TEST_PUSH_SUBSCRIPTION as unknown as PushSubscription;
+
   let a: EP2PushAuthorization;
+
   let encryptedPushSubscription: EP2Sealed<PushSubscription>;
 
   beforeAll(async () => {
@@ -84,10 +91,7 @@ describe("VAPID request", () => {
     // };
     pushedKey = await EP2Key.create();
 
-    encryptedPushSubscription = pushedKey.seal(
-      TEST_PUSH_SUBSCRIPTION as unknown as PushSubscription,
-      serverKey.id
-    );
+    encryptedPushSubscription = pushedKey.seal(pushSubscription, serverKey.id);
 
     a = {
       sealedPushSubscription: encryptedPushSubscription,
@@ -117,225 +121,278 @@ describe("VAPID request", () => {
       );
       expect(result).toBe(true);
     });
-    // test('should fail when key is not posted to sw yet', async () => {
-    //   (axios.post as jest.Mock).mockImplementationOnce(async () => await Promise.resolve({ status: 200 }))
 
-    //   const offlineClient = new EP2Push(mockPushSubscription, pusherKey, serverConfig)
-    //   const result = await offlineClient.pushMessages([correctMessage])
-    //   expect(result).toBe(true)
-    // })
-    // test("should throw an error when axios post fails", async () => {
-    //   (axios.post as jest.Mock).mockRejectedValueOnce(new Error("testError"));
-    //   const offlineClient = new EP2Push(a, pusherKey, config, vapidSubscription);
-    //   await expect(offlineClient.pushText()).rejects.toThrow("testError");
-    //   expect(axios.post).toHaveBeenCalled();
-    //   expect(axios.post).toHaveReturned();
-    // });
+    test("should register", async () => {
+      (axios.post as jest.Mock).mockImplementationOnce(
+        async () => await Promise.resolve({ status: 200, data: vapidResponse })
+      );
+      Object.defineProperty(global, "navigator", {
+        value: {
+          serviceWorker: {
+            getRegistration: jest.fn().mockResolvedValue({
+              pushManager: {
+                subscribe: jest
+                  .fn()
+                  .mockResolvedValue({ endpoint: "mockEndpoint" }),
+              },
+            }),
+          },
+        },
+        writable: true,
+      });
+
+      const pusher = await EP2Push.register(pusherKey);
+      expect(pusher).toBeDefined();
+    });
   });
-
-  // describe("getSharedSubscription", () => {
-  //   test("should return the encrypted pushSubscription", () => {
-  //     const offlineClient = new EP2Push(mockPushSubscription, pusherKey, config);
-  //     expect(offlineClient.sharedSubscription).toBeDefined();
-  //   });
-  // });
 });
 
-// describe("register", () => {
-//   let mockSecureKey: EP2Key;
-//   let mockServerKey: EP2Key;
-//   let mockServerConfig: EP2PushConfig;
-
-//   beforeAll(async () => {
-//     mockSecureKey = await EP2Key.create();
-//     mockServerKey = await EP2Key.create();
-//     Object.defineProperty(global, "navigator", {
-//       value: {
-//         serviceWorker: {
-//           getRegistration: jest.fn().mockResolvedValue(undefined),
-//           pushManager: {
-//             subscribe: jest
-//               .fn()
-//               .mockResolvedValue({ endpoint: "mockEndpoint" }),
-//           },
-//         },
-//       },
-//       writable: true,
-//     });
-//     mockServerConfig = {
-//       host: "hostname",
-//       path: "/push",
-//       ep2PublicKey: mockServerKey.id,
-//       port: 9001,
-//       secure: false,
-//     };
+// describe("getSharedSubscription", () => {
+//   test("should return the encrypted pushSubscription", () => {
+//     const offlineClient = new EP2Push(mockPushSubscription, pusherKey, config);
+//     expect(offlineClient.sharedSubscription).toBeDefined();
 //   });
+// });
+
+describe("register", () => {
+  let mockSecureKey: EP2Key;
+  // let mockServerKey: EP2Key;
+  // let mockServerConfig: EP2PushConfig;
+
+  beforeAll(async () => {
+    mockSecureKey = await EP2Key.create();
+    // mockServerKey = await EP2Key.create();
+    Object.defineProperty(global, "navigator", {
+      value: {
+        serviceWorker: {
+          getRegistration: jest.fn().mockResolvedValue(undefined),
+          pushManager: {
+            subscribe: jest
+              .fn()
+              .mockResolvedValue({ endpoint: "mockEndpoint" }),
+          },
+        },
+      },
+      writable: true,
+    });
+    // mockServerConfig = {
+    //   host: "hostname",
+    //   path: "/push",
+    //   ep2PublicKey: mockServerKey.id,
+    //   port: 9001,
+    //   secure: false,
+    // };
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  // it("should return undefined if service worker registration is undefined", async () => {
+  //   (axios.post as jest.Mock).mockImplementationOnce(
+  //     async () => await Promise.resolve({ status: 200 })
+  //   );
+  //   // Arrange
+  //   const mockGetRegistration = jest
+  //     .spyOn(navigator.serviceWorker, "getRegistration")
+  //     .mockResolvedValue(undefined);
+
+  //   // Act
+  //   const result = await EP2Push.register(mockSecureKey, mockServerConfig);
+
+  //   // Assert
+  //   expect(mockGetRegistration).toHaveBeenCalledTimes(1);
+  //   expect(result).toBeUndefined();
+  // });
+
+  // it("should return undefined if push subscription is unsuccessful", async () => {
+  //   // Arrange
+  //   const mockServiceWorkerRegistration = {
+  //     pushManager: { subscribe: jest.fn().mockResolvedValue(undefined) },
+  //   } as unknown as ServiceWorkerRegistration;
+  //   const mockGetRegistration = jest
+  //     .spyOn(navigator.serviceWorker, "getRegistration")
+  //     .mockResolvedValue(mockServiceWorkerRegistration);
+  //   // const mockPostCommunicationKey = jest.spyOn(updateEP2ServiceWorker,).mockResolvedValue();
+
+  //   // Act
+  //   const result = await EP2Push.register(mockSecureKey, mockServerConfig);
+
+  //   // Assert
+  //   expect(mockGetRegistration).toHaveBeenCalledTimes(1);
+  //   // expect(
+  //   //   mockServiceWorkerRegistration.pushManager.subscribe
+  //   // ).toHaveBeenCalledWith({
+  //   //   applicationServerKey: MOckvapidKey,
+  //   //   userVisibleOnly: true,
+  //   // });
+  //   // expect(mockPostCommunicationKey).not.toHaveBeenCalled();
+  //   expect(result).toBeUndefined();
+  // });
+
+  it("should call navigator.serviceWorker.controller.postMessage with the correct arguments", async () => {
+    // Arrange
+    const mockController = { postMessage: jest.fn() };
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: {
+        controller: mockController,
+      },
+      writable: true,
+    });
+
+    // Act
+    updateEP2ServiceWorker(mockSecureKey);
+
+    // Assert
+    expect(mockController.postMessage).toHaveBeenCalledWith({
+      type: "UPDATE_KEY",
+      key: mockSecureKey.toJSON(),
+    });
+  });
+});
+
+test("registerSW() should attach event listener and call navigator.serviceWorker.ready.then()", () => {
+  // Mock window and navigator objects
+  const mockWindow = { addEventListener: jest.fn() };
+
+  const mockRegistration: ServiceWorkerRegistration = {} as any;
+
+  const mockNavigator = {
+    serviceWorker: {
+      addEventListener: jest.fn(),
+      ready: { then: jest.fn().mockResolvedValue(mockRegistration) },
+      controller: {},
+    },
+    permissions: {
+      query: jest.fn(() => Promise.resolve({ state: "granted" })),
+    },
+    userAgent: "jest-test",
+  };
+  Object.defineProperty(global, "window", { value: mockWindow });
+  Object.defineProperty(global, "navigator", { value: mockNavigator });
+
+  // Call the function
+  addServiceWorkerHandle();
+  //load the window
+  mockWindow.addEventListener.mock.calls[0][1](new Event("load"));
+
+  // Expectations
+  expect(mockWindow.addEventListener).toHaveBeenCalledWith(
+    "load",
+    expect.any(Function)
+  );
+
+  // expect(mockNavigator.serviceWorker.addEventListener).toHaveBeenCalledWith('controllerchange', expect.any(Function));
+  expect(mockNavigator.serviceWorker.ready.then).toHaveBeenCalledWith(
+    expect.any(Function)
+  );
+  expect(mockNavigator.serviceWorker.ready.then.mock.calls[0][0]).toEqual(
+    expect.any(Function)
+  );
+});
+
+test("should create EP2PushServiceWorker", async () => {
+  const serviceWorker = {addEventListener:jest.fn()}
+  expect(() => EP2PushServiceWorker(serviceWorker as any)).not.toThrow();
+});
+
+
+// describe('addServiceWorkerHandle', () => {
+//   let originalNavigator: Navigator;
+//   let originalDocument: Document;
+
+//   beforeEach(() => {
+//     originalNavigator = { ...navigator };
+//     originalDocument = { ...document };
+//     //@ts-ignore
+//     navigator.serviceWorker = {};
+//         //@ts-ignore
+//     // document.visibilityState = 'hidden';
+//   });
+
 //   afterEach(() => {
-//     jest.restoreAllMocks();
-//     jest.clearAllMocks();
+//     navigator = { ...originalNavigator };
+//     document = { ...originalDocument };
 //   });
 
-//   it("should return undefined if service worker registration is undefined", async () => {
-//     // Arrange
-//     const mockGetRegistration = jest
-//       .spyOn(navigator.serviceWorker, "getRegistration")
-//       .mockResolvedValue(undefined);
-
-//     // Act
-//     const result = await EP2Push.register(mockSecureKey, mockServerConfig);
-
-//     // Assert
-//     expect(mockGetRegistration).toHaveBeenCalledTimes(1);
-//     expect(result).toBeUndefined();
-//   });
-//   it("should return new instance of EP2Push if push subscription is successful. key should also be posted to sw", async () => {
-//     // Arrange
-//     const mockPushSubscription: PushSubscription = {
-//       endpoint: "https://example.com",
-//       keys: { p256dh: "key", auth: "auth" },
-//     } as any;
-//     const mockServiceWorkerRegistration: ServiceWorkerRegistration =
-//       //@ts-ignore
-//       {
-//         pushManager: {
-//           subscribe: jest.fn().mockResolvedValue(mockPushSubscription),
-//           getSubscription: async () => mockPushSubscription,
-//           permissionState: async () => "granted",
-//         },
-//       } as ServiceWorkerRegistration;
-
-//     const mockGetRegistration = jest
-//       .spyOn(navigator.serviceWorker, "getRegistration")
-//       .mockResolvedValue(mockServiceWorkerRegistration);
-
-//     // const mockController = { postMessage: jest.fn() };
-//     const mockServiceWorker: ServiceWorkerContainer = {
-//       getRegistration: async () =>
-//         mockGetRegistration as unknown as ServiceWorkerRegistration,
-//     } as unknown as ServiceWorkerContainer;
-
-//     Object.defineProperty(navigator, "serviceWorker", mockServiceWorker);
-
-//     // Act
-//     const offlineClient = await EP2Push.register(mockServerConfig);
-
-//     // Expectations
-//     expect(offlineClient).toBeInstanceOf(EP2Push);
-//     expect(mockGetRegistration).toHaveBeenCalled();
-//     expect(
-//       mockServiceWorkerRegistration.pushManager.subscribe
-//     ).toHaveBeenCalled();
-//     // expect(mockController.postMessage).toHaveBeenCalled()
-//     //With({
-//     //   type: 'SET_COMMUNICATION_KEY',
-//     //   key: mockSecureKey,
-//     // });
-
-//     const encryptedPushSubscription: SymmetricallyEncryptedMessage<PushSubscription> =
-//       mockSecureKey.encryptSymmetrically(
-//         mockServerKey.id,
-//         mockPushSubscription
-//       );
-
-//     const postMock = jest.fn(async () => ({ status: 200 }));
-//     jest.mock("axios", () => ({
-//       post: postMock,
-//     }));
-
-//     const recipient = await EP2Key.create();
-//     offlineClient?.pushText(
-//       {} as NotificationOptions,
-//       recipient.id,
-//       encryptedPushSubscription
-//     );
-//     expect(axios.post).toHaveBeenCalled(); //With(mockPushSubscription.endpoint, encryptedPushMessages);
-//   });
-
-//   it("should return undefined if push subscription is unsuccessful", async () => {
-//     // Arrange
-//     const mockServiceWorkerRegistration = {
-//       pushManager: { subscribe: jest.fn().mockResolvedValue(undefined) },
-//     } as unknown as ServiceWorkerRegistration;
-//     const mockGetRegistration = jest
-//       .spyOn(navigator.serviceWorker, "getRegistration")
-//       .mockResolvedValue(mockServiceWorkerRegistration);
-//     // const mockPostCommunicationKey = jest.spyOn(updateEP2ServiceWorker,).mockResolvedValue();
-
-//     // Act
-//     const result = await EP2Push.register(mockServerConfig);
-
-//     // Assert
-//     expect(mockGetRegistration).toHaveBeenCalledTimes(1);
-//     expect(
-//       mockServiceWorkerRegistration.pushManager.subscribe
-//     ).toHaveBeenCalledWith({
-//       applicationServerKey: mockServerConfig.vapidKey,
-//       userVisibleOnly: true,
-//     });
-//     // expect(mockPostCommunicationKey).not.toHaveBeenCalled();
-//     expect(result).toBeUndefined();
-//   });
-
-//   it("should call navigator.serviceWorker.controller.postMessage with the correct arguments", async () => {
-//     // Arrange
-//     const mockController = { postMessage: jest.fn() };
-//     Object.defineProperty(navigator, "serviceWorker", {
-//       value: {
-//         controller: mockController,
+//   test('registers periodic background sync and resolves the promise', async () => {
+//     //@ts-ignore
+//     navigator.serviceWorker.ready = Promise.resolve({
+//       periodicSync: {
+//         register: jest.fn(),
 //       },
-//       writable: true,
 //     });
 
-//     // Act
-//     updateEP2ServiceWorker(mockSecureKey);
+//     const result = await addServiceWorkerHandle();
 
-//     // Assert
-//     expect(mockController.postMessage).toHaveBeenCalledWith({
-//       type: "UPDATE_KEY",
-//       key: mockSecureKey.toJSON(),
+//     expect(navigator.permissions.query).toHaveBeenCalledWith({
+//       name: 'periodic-background-sync',
 //     });
+//     expect(navigator.serviceWorker.ready).toHaveBeenCalled();
+//     expect(result).toBe(true);
 //   });
+
+  // test('handles visibility change event and sends update message', async () => {
+  //   const postMessageSpy = jest.fn();
+  //   const updateSpy = jest.fn();
+  //   //@ts-ignore
+  //   navigator.serviceWorker.ready = Promise.resolve({
+  //     periodicSync: {
+  //       register: jest.fn(),
+  //     },
+  //     update: updateSpy,
+  //     controller: {
+  //       postMessage: postMessageSpy,
+  //     },
+  //   });
+  //   //@ts-ignore
+  //   document.visibilityState = 'visible';
+
+  //   await addServiceWorkerHandle();
+
+  //   expect(document.addEventListener).toHaveBeenCalledWith(
+  //     'visibilitychange',
+  //     expect.any(Function)
+  //   );
+  //   //@ts-ignore
+  //   const visibilityChangeCallback = document.addEventListener.mock.calls[0][1];
+
+  //   visibilityChangeCallback();
+
+  //   expect(navigator.serviceWorker?.controller?.postMessage).toHaveBeenCalledWith('UPDATE_CHECK');
+  //   expect(updateSpy).toHaveBeenCalled();
+  // });
+
+  // test('rejects the promise if there is an error', async () => {
+  //   const registrationError = new Error('Registration error');
+
+  //   navigator.serviceWorker.ready = Promise.resolve({
+  //     periodicSync: {
+  //       register: jest.fn().mockResolvedValue(),
+  //     },
+  //   });
+
+  //   navigator.permissions.query = jest.fn().mockResolvedValue({ state: 'granted' });
+  //   navigator.serviceWorker.controller = {
+  //     postMessage: jest.fn(),
+  //   };
+  //   navigator.serviceWorker.ready = Promise.resolve();
+  //   navigator.serviceWorker.ready.mockRejectedValue(registrationError);
+
+  //   await expect(addServiceWorkerHandle()).rejects.toEqual(registrationError);
+  // });
 // });
 
-// test("registerSW() should attach event listener and call navigator.serviceWorker.ready.then()", () => {
-//   // Mock window and navigator objects
-//   const mockWindow = { addEventListener: jest.fn() };
 
-//   const mockRegistration: ServiceWorkerRegistration = {} as any;
 
-//   const mockNavigator = {
-//     serviceWorker: {
-//       addEventListener: jest.fn(),
-//       ready: { then: jest.fn().mockResolvedValue(mockRegistration) },
-//       controller: {},
-//     },
-//     permissions: {
-//       query: jest.fn(() => Promise.resolve({ state: "granted" })),
-//     },
-//     userAgent: "jest-test",
-//   };
-//   Object.defineProperty(global, "window", { value: mockWindow });
-//   Object.defineProperty(global, "navigator", { value: mockNavigator });
 
-//   // Call the function
-//   registerSW();
-//   //load the window
-//   mockWindow.addEventListener.mock.calls[0][1](new Event("load"));
 
-//   // Expectations
-//   expect(mockWindow.addEventListener).toHaveBeenCalledWith(
-//     "load",
-//     expect.any(Function)
-//   );
 
-//   // expect(mockNavigator.serviceWorker.addEventListener).toHaveBeenCalledWith('controllerchange', expect.any(Function));
-//   expect(mockNavigator.serviceWorker.ready.then).toHaveBeenCalledWith(
-//     expect.any(Function)
-//   );
-//   expect(mockNavigator.serviceWorker.ready.then.mock.calls[0][0]).toEqual(
-//     expect.any(Function)
-//   );
-// });
+
+
+
+
+
 
 // describe("initSecurePush", () => {
 //   let mockServiceWorker: any;

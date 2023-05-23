@@ -7,7 +7,7 @@ import {
   MediaConnection,
 } from "peerjs";
 import EventEmitter from "eventemitter3";
-import { EP2Key, EP2Anonymized, EP2SecureChannel } from "@ep2/key";
+import { EP2Key, EP2SecureChannel } from "@ep2/key";
 export * from "@ep2/key";
 
 type EP2PeerEvents = {
@@ -39,7 +39,7 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
     super(); //emitter
 
     if (serverPublicKey) {
-      //expect security checks
+      //secureLayer used only during handshake
       const token = key
         .initSecureChannel(serverPublicKey)
         .encrypt({ serverId: serverPublicKey, peerId: key.id });
@@ -48,12 +48,18 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
         ...options,
         token: token,
       };
-      this.isEp2PeerServer = Promise.resolve(true); // this.testEp2Server(options);
+      this.isEp2PeerServer = this.testEp2Server(options);
     }
     this.peer = new Peer(key.id, options);
-    this.peer.on("open", this.handleOpenServer);
-    this.peer.on("connection", this.handleDataConnection);
-    this.peer.on("call", this.validateConnection);
+    this.peer.on("open", (serverAssignedId) =>
+      this.handleOpen(serverAssignedId)
+    );
+    this.peer.on("connection", (dataConnection) =>
+      this.handleConnection(dataConnection)
+    );
+    this.peer.on("call", (mediaConnection) =>
+      this.secureChannel(mediaConnection)
+    );
 
     //simply re-emit the other events
     this.peer.on("error", (e) => this.emit("error", e));
@@ -79,16 +85,14 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
   }
 
   /**
-   * Handler for new incoming DataConnections. A SecurePeer closes the socket from any dataConnection without a valid handshake. A new `SecureLayer` used to communicate with the other peer is placed in `dataConnection.metadata.secureLayer`
+   * Handler for new incoming DataConnections. A SecurePeer closes the socket from any dataConnection without a valid handshake. A new `SecureLayer` used to communicate over the dataConnection with the other peer is emitted on the "connected" event of this ep2peer.
    * @param dataConnection the unencrypted incoming dataConnection
    */
-  private handleDataConnection(dataConnection: DataConnection): void {
-    const secureChannel = this.validateConnection(dataConnection);
+  private handleConnection(dataConnection: DataConnection): void {
+    const secureChannel = this.secureChannel(dataConnection);
     if (secureChannel !== undefined) {
-      dataConnection.metadata.secureLayer = new EP2SecureLayer(
-        dataConnection,
-        secureChannel
-      );
+      const secureLayer = new EP2SecureLayer(dataConnection, secureChannel);
+      this.emit("connected", secureLayer);
     }
   }
 
@@ -98,7 +102,7 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
    * @returns undefined if con.metadata doesn't contain a valid EncryptedHandshake
    * @see EncryptedHandshake
    */
-  private validateConnection(
+  private secureChannel(
     connection: MediaConnection | DataConnection
   ): EP2SecureChannel | undefined {
     try {
@@ -115,34 +119,36 @@ export class EP2Peer extends EventEmitter<EP2PeerEvents> {
    * Handler for opening connection to peerServer. Makes sure the id passed by the server is indeed the request SecurePeer.peerId
    * @param serverAssignedId
    */
-  private handleOpenServer(serverAssignedId: string): void {
+  private handleOpen(serverAssignedId: string): void {
     if (serverAssignedId !== this.key.id) {
       throw Error("server assigned different ID");
     }
+    console.info("Emitted open");
+    this.emit("open", serverAssignedId, false);
   }
 
   /**
    * Tests if the current connecting server accepts a normal (non-secure) peer client.
    * @returns true if the tested connection was closed.
    */
-  // private async testEp2Server(options: PeerJSOption): Promise<boolean> {
-  //   const insecurePeer = new Peer(`${Math.round(Math.random() * 1000000000)}`, {
-  //     ...options,
-  //     debug: 0,
-  //     logFunction(_logLevel, ..._rest) {},
-  //   });
-  //   return await new Promise((resolve) => {
-  //     insecurePeer.on("disconnected", (): void => {
-  //       clearTimeout(connectionTimeout);
-  //       resolve(true);
-  //     });
-  //     const connectionTimeout = setTimeout(() => {
-  //       // server should have disconnected if it were secured
-  //       resolve(false);
-  //       insecurePeer.destroy();
-  //     }, 5000);
-  //   });
-  // }
+  private async testEp2Server(options: PeerJSOption): Promise<boolean> {
+    const insecurePeer = new Peer(`${Math.round(Math.random() * 1000000000)}`, {
+      ...options,
+      debug: 0,
+      logFunction(_logLevel, ..._rest) {},
+    });
+    return await new Promise((resolve) => {
+      insecurePeer.on("disconnected", (): void => {
+        clearTimeout(connectionTimeout);
+        resolve(true);
+      });
+      const connectionTimeout = setTimeout(() => {
+        // server should have disconnected if it were secured
+        resolve(false);
+        insecurePeer.destroy();
+      }, 5000);
+    });
+  }
 
   call(
     peer: string,

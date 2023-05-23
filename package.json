@@ -10,7 +10,7 @@
     "url": "git+https://github.com/bosskabouter/ep2.git"
   },
   "scripts": {
-    "test": " NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "jest",
     "prepublish": "npm run build",
     "format": "prettier --write .",
     "publish": "lerna run tsc && lerna publish",
@@ -20,8 +20,10 @@
     "build": "npm run buildKeyFirst && npm run build:all",
     "build:all": "lerna run build --stream --parallel",
     "build:example": "lerna run build --stream --parallel",
-    "start": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:example": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
     "start:example": "lerna run build --stream --parallel",
+
+    "dev": "lerna run dev",
     "dev:client": "cd ./example/client/ && npm run dev",
     "dev:server": "cd ./example/server/ && npm run dev"
   },

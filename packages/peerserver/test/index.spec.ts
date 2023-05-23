@@ -73,7 +73,10 @@ describe("PeerServer", () => {
   });
 
   test("peer with valid welcome", async () => {
-    const token: string = secureChannel.encrypt("Hi");
+    const token: string = secureChannel.encrypt({
+      serverId: serverKey.id,
+      clientId: clientKey.id,
+    });
 
     // expect a welcome message to be sent, encrypted with the shared secret
     const sendMock = jest.fn(async (encryptedWelcome: string) => {
@@ -108,6 +111,48 @@ describe("PeerServer", () => {
 
     await new Promise((resolve) => setImmediate(resolve).unref());
   });
+
+
+  test("peer with invalid token", async () => {
+    const token: string = secureChannel.encrypt({
+      serverId: clientKey.id,
+      clientId: clientKey.id,
+    });
+
+    // expect a welcome message to be sent, encrypted with the shared secret
+    const sendMock = jest.fn(async (encryptedWelcome: string) => {
+      expect(encryptedWelcome).toBeDefined();
+      const decryptedWelcome = secureChannel.decrypt(encryptedWelcome);
+
+      expect(decryptedWelcome).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      expect(decryptedWelcome).toEqual(`welcome ${clientKey.id}`);
+    });
+
+    const closeSocketMock = jest.fn(() => null);
+    client = {
+      getId: () => {
+        return clientKey.id;
+      },
+      getToken: () => {
+        return token;
+      },
+      getSocket: () => ({
+        close: closeSocketMock,
+      }),
+      send: sendMock,
+    } as unknown as IClient;
+    const emitted = peerServer?.emit("connection", client);
+
+    expect(emitted).toBeTruthy();
+    expect(closeSocketMock).toBeCalled();
+
+    //server does not give a response, otherwise
+    // expect(sendMock).toHaveBeenCalled()
+
+    await new Promise((resolve) => setImmediate(resolve).unref());
+  });
+
 
   test("non ep2peer - close socket", async () => {
     const closeMock = jest.fn(() => null);
