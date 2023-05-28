@@ -68,8 +68,9 @@ export default ({
     const pushMessage = request.message;
 
     const encryptedVapidKeys = pushMessage.a.anonymizedVapidKeys;
+ 
+    Object.setPrototypeOf(encryptedVapidKeys, EP2Anonymized.prototype);
 
-    await EP2Anonymized.revive(encryptedVapidKeys);
 
     // decrypt by the server, for the server
     const { publicKey, privateKey } = encryptedVapidKeys.decrypt(

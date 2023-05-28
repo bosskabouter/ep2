@@ -1,7 +1,7 @@
 import { EP2Key } from "@ep2/key";
 // import { EP2KeyBIP } from "@ep2/key-bip";
-import { ExpressEP2PushServer } from "@ep2/pushserver";
-import { ExpressEP2PeerServer } from "@ep2/peerserver";
+import {  ExpressEP2PushServer } from "@ep2/pushserver";
+import  { ExpressEP2PeerServer } from "@ep2/peerserver";
 
 import express from "express";
 
@@ -21,7 +21,6 @@ const server = http.createServer(app);
 EP2Key.create(TEST_VALUES.testConfig.server.seed)
   .then((key: EP2Key) => {
     app.use(cors());
-
     app.use(
       ExpressEP2PushServer(key, server, {
         path: TEST_VALUES.testConfig.server.EP2_PUSH_CTX,
@@ -38,19 +37,19 @@ EP2Key.create(TEST_VALUES.testConfig.server.seed)
     );
 
     server.listen(PORT, () => {
-      console.info( 
+      console.info(
         `   EP²                                   🐝
-        
-        Example Server started 
-    🐝   
+              
+        Example Server started  
+    🐝      
         http://localhost:${PORT.toString()}                             🐝
 
         PUBLIC KEY: ${key.id}   
-        
+           
         Remember your mnemonic for easy recovery of your key: 
         *${key.seed}*
         
-
+         
         `
       );
     });

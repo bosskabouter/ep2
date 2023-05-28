@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "command": "cd ./example/server/ && npm run dev",
+      "name": "Debug Server",
+      "request": "launch",
+      "type": "node-terminal"
+    },
+    {
+      "command": "cd ./example/client/ && npm run dev",
+      "name": "Debug Client",
+      "request": "launch",
+      "type": "node-terminal"
+    },
+    {
+      "command": "npm run dev",
+      "name": "Compile Watch",
+      "request": "launch",
+      "type": "node-terminal"
+    }
+  ]
+}

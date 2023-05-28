@@ -17,14 +17,15 @@ npm start
 
 The ep2 library consists of the following packages:
 
-- Client:
+- Client packages:
   - [EP2Peer](./packages/peer/) - encrypted P2P `WebRTC` client
   - [EP2Push](./packages/push/) - encrypted `PushSubscription`/`Notification` client
-- Server:
+- Server packages:
   - [EP2PeerServer](/packages/peerserver/) - authentication `WebRTC Signaling` server
   - [EP2PushServer](/packages/pushserver/) - anonymized `Push Endpoint Relay` server
-- [EP2Key](/packages/key/) - the core encryption component (included in client and server packages)
-- [EP2KeyBIP](/packages/key-bip/) - BIP32 HD Key and BIP39 mnemonic recovery phrase.
+- Key encryption packages
+  - [EP2Key](/packages/key/) - the core component, already included in client and server packages
+  - [EP2KeyBIP](/packages/key-bip/) - BIP32 HD Key and BIP39 mnemonic recovery phrase
 
 For detailed information about each package, see their respective pages.
 
@@ -34,11 +35,13 @@ For detailed information about each package, see their respective pages.
 
 ```typescript
 import { EP2Peer, EP2Key } from "@ep2/peer";
-import { EP2Push /* also includes EP2Key */ } from "@ep2/push";
+import { EP2Push } from "@ep2/push";
 
-EP2Key.create().then((key) => {
-  const ep2Push = EP2Push.register(key);
+EP2Key.create('*strong* seed').then(async (key) => {
+  const ep2Push = await EP2Push.register(key);
   const ep2Peer = new EP2Peer(key);
+
+
 });
 ```
 
@@ -47,14 +50,12 @@ EP2Key.create().then((key) => {
 ````typescript
 
 import {EP2PeerServer, EP2Key} from '@ep2/peerserver'
-import {EP2PushServer, /* also includes EP2Key */ } from '@ep2/pushserver'
+import {EP2PushServer} from '@ep2/pushserver'
 
-```typescript
-EP2KeyBIP.create().then( key => {
-  const ep
-  const ep2Peer = new EP2PeerServer(key)
-
-})
+EP2Key.create('*stronger* seed').then( key => {
+   EP2PushServer(key, { path: "/myPushServer" });
+   EP2PeerServer(key, { path: "/myPeerServer" })
+ })
 
 ````
 

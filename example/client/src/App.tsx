@@ -5,7 +5,7 @@ function App(): JSX.Element {
   return (
     <div className="App">
       <EP2PushYourself />
-      {/* <Peers /> */}
+      <Peers />
     </div>
   );
 }

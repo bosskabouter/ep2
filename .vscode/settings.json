@@ -10,6 +10,7 @@
     "keypair",
     "Kuit",
     "libsodium",
+    "mountpath",
     "NONCEBYTES",
     "peerjs",
     "peerserver",

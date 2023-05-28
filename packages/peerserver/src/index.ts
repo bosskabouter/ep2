@@ -29,7 +29,11 @@ export function ExpressEP2PeerServer(
   server: HttpsServer | HttpServer,
   options?: Partial<IConfig>
 ): Express & PeerServerEvents & EP2PeerServerEvents {
-  return initialize(ExpressPeerServer(server, options), ep2key);
+  return initialize(
+    ExpressPeerServer(server, options),
+    ep2key,
+    options?.path ? options.path : "/"
+  );
 }
 
 export default function EP2PeerServer(
@@ -37,12 +41,17 @@ export default function EP2PeerServer(
   options?: Partial<IConfig>,
   callback?: (server: HttpsServer | HttpServer) => void
 ): Express & PeerServerEvents & EP2PeerServerEvents {
-  return initialize(PeerServer(options, callback), ep2key);
+  return initialize(
+    PeerServer(options, callback),
+    ep2key,
+    options?.path ? options.path : "/"
+  );
 }
 
 function initialize(
   server: Express & PeerServerEvents,
-  ep2key: EP2Key
+  ep2key: EP2Key,
+  path: string
 ): Express & PeerServerEvents & EP2PeerServerEvents {
   server.on("connection", (client: IClient) => {
     const token = client.getToken();
@@ -64,6 +73,9 @@ function initialize(
       server.emit("handshake-error", { client, token, error });
     }
   });
-  server.get("/version", (_req, res) => res.send(version));
+  console.info("Version: " + version);
+  console.info("path: " + path);
+
+  server.get(path + "/version", (_req, res) => res.send(version));
   return server as Express & PeerServerEvents & EP2PeerServerEvents;
 }

@@ -24,7 +24,7 @@
     "start:example": "lerna run build --stream --parallel",
     "start":"npm run dev:example",
 
-    "dev": "lerna run dev",
+    "dev": "lerna watch -- lerna run build --scope=\\$LERNA_PACKAGE_NAME --include-dependents",
     "dev:client": "cd ./example/client/ && npm run dev",
     "dev:server": "cd ./example/server/ && npm run dev"
   },

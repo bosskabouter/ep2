@@ -22,7 +22,7 @@ export const Api = ({
     res.send(publicContent);
   });
   router.get("/version", (_, res) => {
-    res.send(version);
+    res.send(version());
   });
   router.use("/", PublicApi({ key, config }));
 
