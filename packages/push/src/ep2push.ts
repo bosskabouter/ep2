@@ -3,7 +3,6 @@ import axios from "axios";
 import { EP2Anonymized, EP2Key, EP2Sealed } from "@ep2/key";
 import { addServiceWorkerHandle as addServiceWorkerHandle } from "./swutil";
 import {
-  EP2PushConfig,
   EP2PushMessage,
   EP2PushMessageRequest,
   EP2PushAuthorization,
@@ -33,10 +32,6 @@ When the other peer needs to push, they will send the encrypted key pair to the 
 
 export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
   /**
-   * Encode the pushSubscription symmetrically with the server public key so it is safe to share with other contacts. Only the server can get your subscription data.
-   */
-
-  /**
    * USE `await EP2Push.register()` to register a EP2Push instance!
    *
    * @param pushSubscription
@@ -44,17 +39,13 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
    * @param config
    * @see EP2Push.register
    */
-  constructor(
+  private constructor(
     /**
      * The pushSubscription safe to share with other peers.
      */
     readonly sharedSubscription: EP2PushAuthorization,
-
     private readonly ep2key: EP2Key,
-
-    // private readonly config: EP2PushConfig,
-    private readonly postURI: string,
-    private readonly config: EP2PushConfig
+    private readonly postURI: string
   ) {
     super();
   }
@@ -68,31 +59,53 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
   // override
   static async register(
     ep2key: EP2Key,
-    config?: EP2PushConfig
+    config = defaultConfig
   ): Promise<EP2Push | null> {
-    config =
-      config === undefined ? defaultConfig : { ...defaultConfig, ...config };
-    /**
-     * Service endpoint as configured in `EP2PushConfig`
-     */
+    config = { ...defaultConfig, ...config };
     const postURI = `${config.secure ? "https" : "http"}://${config.host}:${
       config.port
     }${config.path}`;
 
-    // Request EP2VapidSubscription from the server
-    const vapidSubscription = await EP2Push.requestVapidKeys(
-      ep2key,
-      postURI,
-      config.ep2PublicKey
-    );
+    let subs = await this.getSubscription();
+    let anonymizedVapidKeys: EP2Anonymized<{
+      privateKey: string;
+      publicKey: string;
+    }>;
+    if (!subs) {
+      //not subscribed (yet)
+      const vapidSubscription = await EP2Push.requestVapidKeys(
+        ep2key,
+        postURI,
+        // config.ep2PublicKey
+      );
+      console.debug(
+        "Not subscribed yet, requested vapid keys",
+        vapidSubscription
+      );
 
-    console.info("vapidSubscription", vapidSubscription);
-    // Use the newly created Vapid keys to subscribe to.
-    const subs = await EP2Push.subscribePushManager(
-      vapidSubscription.vapidPublicKey
-    );
+      //store the encrypted vapid key pair
+      anonymizedVapidKeys = vapidSubscription.encryptedVapidKeys;
+      console.debug("Storing anonymizedVapidKeys", anonymizedVapidKeys);
 
-    if (subs === undefined) {
+      localStorage.setItem(
+        "encryptedVapidKeys",
+        JSON.stringify(anonymizedVapidKeys)
+      );
+      console.debug(
+        "Subscribing vapidPublicKey",
+        vapidSubscription.vapidPublicKey
+      );
+      subs = await EP2Push.subscribePushManager(
+        vapidSubscription.vapidPublicKey
+      );
+    } else {
+      //restore the encrypted vapid key pair
+      anonymizedVapidKeys = JSON.parse(
+        localStorage.getItem("encryptedVapidKeys")!
+      );
+    }
+
+    if (subs === null) {
       console.warn("No subscription, no EP2Push");
       return null;
     }
@@ -102,13 +115,13 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
 
     updateEP2ServiceWorker(ep2key);
 
-    const encryptedPushSubscription = new EP2Sealed(subs, config.ep2PublicKey);
+    const sealedPushSubscription = new EP2Sealed(subs, config.ep2PublicKey);
     const sharedSubscription: EP2PushAuthorization = {
-      sealedPushSubscription: encryptedPushSubscription,
-      anonymizedVapidKeys: vapidSubscription.encryptedVapidKeys,
+      sealedPushSubscription,
+      anonymizedVapidKeys,
     };
 
-    return new this(sharedSubscription, ep2key, postURI, config);
+    return new this(sharedSubscription, ep2key, postURI);
   }
 
   /**
@@ -118,7 +131,7 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
   public static async requestVapidKeys(
     ep2key: EP2Key,
     postURI: string,
-    serverId: string
+    // serverId: string
   ): Promise<EP2PushVapidResponse> {
     const request: EP2PushVapidRequest = {
       peerId: ep2key.id,
@@ -129,9 +142,9 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
     if (response.status > 200)
       throw Error("No VAPID Keys from EP2PushServer: " + response.statusText);
 
-    const vapidR = response.data as EP2Anonymized<EP2PushVapidResponse>;
-    Object.setPrototypeOf(vapidR, EP2Anonymized.prototype);
-    return vapidR.decrypt(ep2key, serverId);
+    const vapidR = response.data; // as EP2Anonymized<EP2PushVapidResponse>;
+    // Object.setPrototypeOf(vapidR, EP2Anonymized.prototype);
+    return vapidR; //.decrypt(ep2key, serverId);
   }
 
   /**
@@ -139,10 +152,20 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
    * @param {string} vapidPublicKey as received from the `EP2PushServer` during phase 1.
    * @returns {Promise<PushSubscription | undefined>} A `PushSubscription` from the browser, subscribed to the vapid public key given by the `EP2PushServer` in `EP2VapidSubscription.publicKey`
    */
+  private static async getSubscription(): Promise<PushSubscription | null> {
+    const serviceWorkerRegistration =
+      await navigator.serviceWorker?.getRegistration();
+
+    if (serviceWorkerRegistration === undefined) {
+      throw Error("EP2PUSH: No serviceWorker Registration");
+    }
+
+    const subs = await serviceWorkerRegistration.pushManager.getSubscription();
+    return subs;
+  }
   private static async subscribePushManager(
     vapidPublicKey: string
-  ): Promise<PushSubscription | undefined> {
-    console.info("Registering VAPID pub key: " + vapidPublicKey);
+  ): Promise<PushSubscription | null> {
     const serviceWorkerRegistration =
       await navigator.serviceWorker?.getRegistration();
 
@@ -154,9 +177,9 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
       applicationServerKey: vapidPublicKey,
       userVisibleOnly: true,
     });
-    if (subs === undefined) {
+    if (!subs) {
       console.warn("EP2PUSH: PushManager did not subscribe");
-      return;
+      return null;
     }
     return subs;
   }
@@ -187,7 +210,10 @@ export class EP2Push extends EventEmitter<EP2PushEvents> implements EP2PushI {
       message,
     };
 
-    const response = await axios.post(this.postURI + "/push", pushMessageRequest);
+    const response = await axios.post(
+      this.postURI + "/push",
+      pushMessageRequest
+    );
 
     return (
       response !== undefined && response !== null && response.status === 200

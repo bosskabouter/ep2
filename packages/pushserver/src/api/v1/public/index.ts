@@ -35,7 +35,6 @@ export default ({
    */
   app.post("/vapid", (request, response) => {
     let peerId = request.body.peerId;
-    console.info("Generating keys for " + peerId);
     const vapidKeys = webpush.generateVAPIDKeys();
     // encrypts the keys for itself
     // console.info("Delivering new pair of VAPID keys to: ", peerId, vapidKeys);

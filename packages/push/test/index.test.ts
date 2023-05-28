@@ -20,17 +20,6 @@ import { EP2PushServiceWorker, addServiceWorkerHandle } from "../src/swutil";
 
 jest.mock("axios");
 
-// const mockPushSubscription: PushSubscription = JSON.parse(
-//   JSON.stringify({
-//     endpoint: "https://example.com/push/1234",
-//     expirationTime: null,
-//     keys: {
-//       p256dh: "P256DH_PUBLIC_KEY",
-//       auth: "AUTH_SECRET_KEY",
-//     },
-//   })
-// );
-
 describe("VAPID request", () => {
   let pusherKey: EP2Key;
   let serverKey: EP2Key;
@@ -39,9 +28,10 @@ describe("VAPID request", () => {
     privateKey: string;
     publicKey: string;
   }>;
-  // server response with encrypted vapid key pair + plain text vapid public key for user to subscribe `ServiceWorker.PushManager` to
+
+  // let anonymizedVapidResponse: EP2Anonymized<EP2PushVapidResponse>;
   let vapidResponse: EP2PushVapidResponse;
-  //encrypted response to client
+
   let cloakedVapidResponse: EP2Cloaked<EP2PushVapidResponse>;
 
   beforeAll(async () => {
@@ -59,6 +49,13 @@ describe("VAPID request", () => {
       encryptedVapidKeys,
       vapidPublicKey: TEST_VAPID_KEYS.keys.publicKey,
     };
+
+    // anonymizedVapidResponse = new EP2Anonymized(
+    //   vapidResponse,
+    //   serverKey,
+    //   pushedKey.id
+    // );
+
     cloakedVapidResponse = serverKey.cloak(vapidResponse, pushedKey.id);
 
     (axios.post as jest.Mock).mockImplementation(
@@ -108,20 +105,6 @@ describe("VAPID request", () => {
   });
 
   describe("pushMessage", () => {
-    test("should return true when axios post succeeds", async () => {
-      (axios.post as jest.Mock).mockImplementationOnce(
-        async () => await Promise.resolve({ status: 200 })
-      );
-
-      const ep2push = new EP2Push(a, pusherKey, "/push");
-      const result = await ep2push.pushText(
-        notificationOptions,
-        pushedKey.id,
-        a
-      );
-      expect(result).toBe(true);
-    });
-
     test("should register", async () => {
       (axios.post as jest.Mock).mockImplementationOnce(
         async () => await Promise.resolve({ status: 200, data: vapidResponse })
@@ -134,6 +117,7 @@ describe("VAPID request", () => {
                 subscribe: jest
                   .fn()
                   .mockResolvedValue({ endpoint: "mockEndpoint" }),
+                getSubscription: () => null,
               },
             }),
           },
@@ -292,10 +276,9 @@ test("registerSW() should attach event listener and call navigator.serviceWorker
 });
 
 test("should create EP2PushServiceWorker", async () => {
-  const serviceWorker = {addEventListener:jest.fn()}
+  const serviceWorker = { addEventListener: jest.fn() };
   expect(() => EP2PushServiceWorker(serviceWorker as any)).not.toThrow();
 });
-
 
 // describe('addServiceWorkerHandle', () => {
 //   let originalNavigator: Navigator;
@@ -332,67 +315,56 @@ test("should create EP2PushServiceWorker", async () => {
 //     expect(result).toBe(true);
 //   });
 
-  // test('handles visibility change event and sends update message', async () => {
-  //   const postMessageSpy = jest.fn();
-  //   const updateSpy = jest.fn();
-  //   //@ts-ignore
-  //   navigator.serviceWorker.ready = Promise.resolve({
-  //     periodicSync: {
-  //       register: jest.fn(),
-  //     },
-  //     update: updateSpy,
-  //     controller: {
-  //       postMessage: postMessageSpy,
-  //     },
-  //   });
-  //   //@ts-ignore
-  //   document.visibilityState = 'visible';
+// test('handles visibility change event and sends update message', async () => {
+//   const postMessageSpy = jest.fn();
+//   const updateSpy = jest.fn();
+//   //@ts-ignore
+//   navigator.serviceWorker.ready = Promise.resolve({
+//     periodicSync: {
+//       register: jest.fn(),
+//     },
+//     update: updateSpy,
+//     controller: {
+//       postMessage: postMessageSpy,
+//     },
+//   });
+//   //@ts-ignore
+//   document.visibilityState = 'visible';
 
-  //   await addServiceWorkerHandle();
+//   await addServiceWorkerHandle();
 
-  //   expect(document.addEventListener).toHaveBeenCalledWith(
-  //     'visibilitychange',
-  //     expect.any(Function)
-  //   );
-  //   //@ts-ignore
-  //   const visibilityChangeCallback = document.addEventListener.mock.calls[0][1];
+//   expect(document.addEventListener).toHaveBeenCalledWith(
+//     'visibilitychange',
+//     expect.any(Function)
+//   );
+//   //@ts-ignore
+//   const visibilityChangeCallback = document.addEventListener.mock.calls[0][1];
 
-  //   visibilityChangeCallback();
+//   visibilityChangeCallback();
 
-  //   expect(navigator.serviceWorker?.controller?.postMessage).toHaveBeenCalledWith('UPDATE_CHECK');
-  //   expect(updateSpy).toHaveBeenCalled();
-  // });
-
-  // test('rejects the promise if there is an error', async () => {
-  //   const registrationError = new Error('Registration error');
-
-  //   navigator.serviceWorker.ready = Promise.resolve({
-  //     periodicSync: {
-  //       register: jest.fn().mockResolvedValue(),
-  //     },
-  //   });
-
-  //   navigator.permissions.query = jest.fn().mockResolvedValue({ state: 'granted' });
-  //   navigator.serviceWorker.controller = {
-  //     postMessage: jest.fn(),
-  //   };
-  //   navigator.serviceWorker.ready = Promise.resolve();
-  //   navigator.serviceWorker.ready.mockRejectedValue(registrationError);
-
-  //   await expect(addServiceWorkerHandle()).rejects.toEqual(registrationError);
-  // });
+//   expect(navigator.serviceWorker?.controller?.postMessage).toHaveBeenCalledWith('UPDATE_CHECK');
+//   expect(updateSpy).toHaveBeenCalled();
 // });
 
+// test('rejects the promise if there is an error', async () => {
+//   const registrationError = new Error('Registration error');
 
+//   navigator.serviceWorker.ready = Promise.resolve({
+//     periodicSync: {
+//       register: jest.fn().mockResolvedValue(),
+//     },
+//   });
 
+//   navigator.permissions.query = jest.fn().mockResolvedValue({ state: 'granted' });
+//   navigator.serviceWorker.controller = {
+//     postMessage: jest.fn(),
+//   };
+//   navigator.serviceWorker.ready = Promise.resolve();
+//   navigator.serviceWorker.ready.mockRejectedValue(registrationError);
 
-
-
-
-
-
-
-
+//   await expect(addServiceWorkerHandle()).rejects.toEqual(registrationError);
+// });
+// });
 
 // describe("initSecurePush", () => {
 //   let mockServiceWorker: any;

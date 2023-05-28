@@ -10,6 +10,7 @@ import {
 } from "peer";
 
 import { EP2Key } from "@ep2/key";
+import version from "./version";
 
 export * from "@ep2/key";
 
@@ -23,15 +24,6 @@ interface EP2PeerServerEvents {
     }) => void
   ) => this;
 }
-/**
- * Returns a secure Express Peer server instance.
- *
- * @param ep2key The EP2Key object used for encryption.
- * @param server An HTTP or HTTPS server instance.
- * @param options Optional configuration options. See peerJS options
- * @see PeerServer
- * @returns An Express instance with SecurePeerServerEvents.
- */
 export function ExpressEP2PeerServer(
   ep2key: EP2Key,
   server: HttpsServer | HttpServer,
@@ -40,14 +32,6 @@ export function ExpressEP2PeerServer(
   return initialize(ExpressPeerServer(server, options), ep2key);
 }
 
-/**
- * Returns a secure Peer server instance.
- *
- * @param ep2key The EP2Key object used for encryption.
- * @param options Optional configuration options.
- * @param callback An optional callback function to be executed after the server is created.
- * @returns An Express instance with PeerServerEvents.
- */
 export default function EP2PeerServer(
   ep2key: EP2Key,
   options?: Partial<IConfig>,
@@ -56,14 +40,6 @@ export default function EP2PeerServer(
   return initialize(PeerServer(options, callback), ep2key);
 }
 
-/**
- * Adds a connection handler that verifies the token from connecting peers for a valid EncryptedHandshake
- *
- * @see EncryptedHandshake
- * @param server The Peer server instance to modify.
- * @param ep2key The EP2Key object used for encryption.
- * @returns The modified Peer server instance with event handlers.
- */
 function initialize(
   server: Express & PeerServerEvents,
   ep2key: EP2Key
@@ -81,20 +57,13 @@ function initialize(
         decrypted.peerId !== client.getId() ||
         decrypted.serverId !== ep2key.id
       ) {
-        console.info("decrypted.clientId", decrypted.peerId);
-        console.info("client.getId()", client.getId());
-        console.info("decrypted.serverId", decrypted.serverId);
-        console.info("ep2key.id", ep2key.id);
-        throw Error(
-          "Client?server IDs do not match. ClientID: " + client.getId()
-        );
+        throw Error("Invalid Handshake: " + client.getId());
       }
-      console.debug("Welcome peer: " + clientId);
     } catch (error: any) {
-      console.debug("Invalid Handshake:" + error, token);
       client.getSocket()?.close();
-      server.emit("handshake-error", { clientId, token });
+      server.emit("handshake-error", { client, token, error });
     }
   });
+  server.get("/version", (_req, res) => res.send(version));
   return server as Express & PeerServerEvents & EP2PeerServerEvents;
 }

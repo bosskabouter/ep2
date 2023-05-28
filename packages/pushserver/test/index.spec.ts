@@ -3,26 +3,11 @@ import request from "supertest";
 import express from "express";
 
 import publicContent from "../src/app.json";
-// import type { IncomingMessage, Server, ServerResponse } from "http";
 import webpush from "web-push";
-import {
-  EP2Anonymized,
-  EP2PushServer,
-  ExpressEP2PushServer,
-  // EP2PushAuthorization,
-  // EP2PushAuthorization,
-
-  // EP2PushMessageRequest,
-  // EP2PushRequest,
-
-  // EP2PushVapidRequest,
-  // EP2PushAuthorization,
-  // EP2PushMessageRequest,
-  // EP2PushMessage,
-} from "../src";
+import { EP2PushServer, ExpressEP2PushServer } from "../src";
 
 import TEST_PUSH_SUBSCRIPTION from "./push-subscription.spec.json";
-import { EP2Key, EP2Sealed } from "@ep2/key";
+import { EP2Anonymized, EP2Key, EP2Sealed } from "@ep2/key";
 import {
   EP2PushAuthorization,
   EP2PushMessageRequest,
@@ -81,18 +66,17 @@ describe("EP2PushServer", () => {
       const resp = await request(app)
         .post("/ep2push/vapid")
         // .set("Content-Type", "application/text")
-        .send({ id: pushedKey.id });
+        .send({ peerId: pushedKey.id });
 
       expect(resp).toBeDefined();
       expect(resp.error).toBeFalsy();
 
       expect(resp.body).toBeDefined();
 
-      let anonymizedVapidResponse: EP2Anonymized<EP2PushVapidResponse> =
-        resp.body;
-      await EP2Anonymized.revive(anonymizedVapidResponse);
-
-      return anonymizedVapidResponse.decrypt(pushedKey, serverKey.id);
+      let vapidResponse: EP2Anonymized<EP2PushVapidResponse> = resp.body;
+      vapidResponse;
+      Object.setPrototypeOf(vapidResponse, EP2Anonymized.prototype);
+      return vapidResponse.decrypt(pushedKey, serverKey.id);
     };
     const mockEncryptedPushSubscription: () => EP2Sealed<PushSubscription> =
       () => {
@@ -111,10 +95,10 @@ describe("EP2PushServer", () => {
     };
 
     const mockPushMessageRequest: (
-      b: boolean
-    ) => Promise<EP2PushMessageRequest> = async (b) => {
+      big: boolean
+    ) => Promise<EP2PushMessageRequest> = async (big) => {
       let body = "Read the body";
-      if (b) body = body.repeat(1000);
+      if (big) body = body.repeat(1000);
       const notificationOptions: NotificationOptions = {
         actions: [{ action: "", title: "Open Me" }],
         body,
@@ -151,8 +135,10 @@ describe("EP2PushServer", () => {
 
       const response = await request(app).post("/ep2push/push").send(push);
       expect(response).toBeDefined();
-      expect(response.text).toContain('Insufficient Storage');
-      expect(response.error.toString()).toContain(HTTP_ERROR_PUSH_TOO_BIG.toString());
+      expect(response.text).toContain("Insufficient Storage");
+      expect(response.error.toString()).toContain(
+        HTTP_ERROR_PUSH_TOO_BIG.toString()
+      );
       expect(response.status).toBeTruthy();
     });
     //   const encryptedVapidKeys = pushVapidResponse.encryptedVapidKeys;

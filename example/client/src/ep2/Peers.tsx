@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { EP2Key, EP2Peer, type EP2SecureLayer } from "@ep2/peer";
 
-// import { EP2KeyBip } from '@ep2/key-bip'
-
 import TEST_CONFIG from "../../../example-config.json";
 
 function Peers(): JSX.Element {
@@ -133,7 +131,7 @@ function PeerInstance({
   }
 
   return (
-    <div>
+    <div><h1>
       <div style={{ color: getColorFromBase64(ep2Peer?.id) }}>
         Peer ID: {shortenBase64(ep2Peer?.id)}
       </div>
@@ -151,6 +149,7 @@ function PeerInstance({
       <button onClick={doSendText} color="green">
         Send {count}
       </button>
+      </h1>
     </div>
   );
 }

@@ -75,7 +75,7 @@ describe("PeerServer", () => {
   test("peer with valid welcome", async () => {
     const token: string = secureChannel.encrypt({
       serverId: serverKey.id,
-      clientId: clientKey.id,
+      peerId: clientKey.id,
     });
 
     // expect a welcome message to be sent, encrypted with the shared secret

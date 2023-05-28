@@ -38,7 +38,7 @@ EP2Key.create(TEST_VALUES.testConfig.server.seed)
     );
 
     server.listen(PORT, () => {
-      console.info(
+      console.info( 
         `   EP²                                   🐝
         
         Example Server started 

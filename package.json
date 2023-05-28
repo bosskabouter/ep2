@@ -22,6 +22,7 @@
     "build:example": "lerna run build --stream --parallel",
     "dev:example": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
     "start:example": "lerna run build --stream --parallel",
+    "start":"npm run dev:example",
 
     "dev": "lerna run dev",
     "dev:client": "cd ./example/client/ && npm run dev",
